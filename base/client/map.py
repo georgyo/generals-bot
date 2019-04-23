@@ -22,6 +22,7 @@ class Player(object):
 		self.index = player_index
 		self.stars = 0
 		self.score = 0
+		self.tiles = []
 		self.tileCount = 0
 		self.standingArmy = 0
 		self.cityCount = 1
@@ -30,6 +31,7 @@ class Player(object):
 		self.delta25tiles = 0
 		self.delta25score = 0
 		self.dead = False
+		self.leftGame = False
 		self.capturedBy = None
 		self.knowsKingLocation = False
 
@@ -49,6 +51,39 @@ class Map(object):
 		self.rows = self.rows 															# Integer Number Grid Rows
 		self.cols = self.cols 															# Integer Number Grid Cols
 		self.grid = [[Tile(x,y) for x in range(self.cols)] for y in range(self.rows)]	# 2D List of Tile Objects
+		for x in range(self.cols):
+			for y in range(self.rows):
+				tile = self.grid[y][x]
+				tile.topLeft = self.GetTile(x - 1, y - 1)
+				if (tile.topLeft != None):
+					tile.adjacents.append(tile.topLeft)
+				tile.topRight = self.GetTile(x + 1, y - 1)
+				if (tile.topRight != None):
+					tile.adjacents.append(tile.topRight)
+				tile.bottomLeft = self.GetTile(x - 1, y + 1)
+				if (tile.bottomLeft != None):
+					tile.adjacents.append(tile.bottomLeft)
+				tile.bottomRight = self.GetTile(x + 1, y + 1)
+				if (tile.bottomRight != None):
+					tile.adjacents.append(tile.bottomRight)
+				tile.left = self.GetTile(x - 1, y)
+				if (tile.left != None):
+					tile.adjacents.append(tile.left)
+					tile.moveable.append(tile.left)
+				tile.right = self.GetTile(x + 1, y)
+				if (tile.right != None):
+					tile.adjacents.append(tile.right)
+					tile.moveable.append(tile.right)
+				tile.top = self.GetTile(x, y - 1)
+				if (tile.top != None):
+					tile.adjacents.append(tile.top)
+					tile.moveable.append(tile.top)
+				tile.bottom = self.GetTile(x, y + 1)
+				if (tile.bottom != None):
+					tile.adjacents.append(tile.bottom)
+					tile.moveable.append(tile.bottom)
+				
+		
 		self.updateTurnGrid = [[int for x in range(self.cols)] for y in range(self.rows)]	# 2D List of Tile Objects
 		self.turn = data['turn']														# Integer Turn # (1 turn / 0.5 seconds)
 		self.cities = []																# List of City Tiles
@@ -61,6 +96,12 @@ class Map(object):
 		self.scoreHistory = [None for i in range(25)]
 		self.remainingPlayers = 0
 		
+	def GetTile(self, x, y):
+		if (x < 0 or x >= self.cols or y < 0 or y >= self.rows):
+			return None
+		return self.grid[y][x]
+
+	
 		
 	def updatePlayerInformation(self):
 		cityCounts = [0 for i in range(len(self.players))]
@@ -87,7 +128,7 @@ class Map(object):
 					tileDelta = score['tiles'] - lastScore['tiles']
 					
 					#print("player {} delta {}".format(player.index, delta))
-					if (tileDelta >= 0 and turn % 50 != 0): #ignore army bonus turns					
+					if (tileDelta >= 0 and tileDelta < 2 and turn % 50 != 0): #ignore army bonus turns and other player captures				
 						delta = score['total'] - lastScore['total']
 						if (delta > 0):
 							cityCounts[j] = max(delta, cityCounts[j])		
@@ -105,16 +146,59 @@ class Map(object):
 					player.delta25score = self.players[i].score - earliest[i]['total']
 					player.delta25tiles = self.players[i].tileCount - earliest[i]['tiles']
 				if (self.scores[i]['dead'] == True):
-					player.dead = True
+					player.leftGame = True
+					if (self.scores[i]['tiles'] == 0):
+						player.dead = True
+					
 				else:
 					self.remainingPlayers += 1
 
+	def handle_player_capture(self, text):
+		capturer, capturee = text.split(" captured ")
+		capturee = capturee.rstrip('.')
+
+		#print("\n\n    ~~~~~~~~~\nPlayer captured: {} by {}\n    ~~~~~~~~~\n".format(capturer, capturee))
+		capturerIdx = self.get_id_from_username(capturer)
+		captureeIdx = self.get_id_from_username(capturee)
+		print("\n\n    ~~~~~~~~~\nPlayer captured: {} ({}) by {} ({})\n    ~~~~~~~~~\n".format(capturee, captureeIdx, capturer, capturerIdx))
+		
+		if (capturerIdx == self.player_index):
+			#ignore, player was us
+			return
+		if (captureeIdx >= 0):
+			capturedGen = self.generals[captureeIdx]
+			if (capturedGen != None):
+				capturedGen.isGeneral = False
+				capturedGen.isCity = True
+			self.generals[captureeIdx] = None
+			capturingPlayer = self.players[capturerIdx]
+			for x in range(self.cols):
+				for y in range(self.rows):
+					tile = self.grid[y][x]
+					if tile.player == captureeIdx:
+						tile.player = capturerIdx
+						tile.army = tile.army // 2
+						if (tile.isCity and not tile in capturingPlayer.cities):
+							capturingPlayer.cities.append(tile)
+						
+				
+
+	def get_id_from_username(self, username):
+		for i, curName in enumerate(self.usernames):
+			if (username == curName):
+				return i
+		return -1
+		
 	def update(self, data):
-		if self.complete: # Game Over - Ignore Empty Board Updates
+		for player in self.players:
+			if (player != None):
+				player.cities = []
+				player.tiles = []
+		if self.complete and self.result == False: # Game Over - Ignore Empty Board Updates
 			return self
 		oldTiles = self._tile_grid
 		oldArmy = self._army_grid
-
+		#print("\nData:\n{}\n".format(json.dumps(data)))
 		self._applyUpdateDiff(data)
 		self.scores = self._getScores(data)
 		for i in range(len(self.scoreHistory) - 1, 0, -1):
@@ -147,6 +231,8 @@ class Map(object):
 		for x in range(self.cols): # Make assumptions about unseen tiles
 			for y in range(self.rows):
 				curTile = self.grid[y][x]
+				if (curTile.isCity and curTile.player >= 0):
+					self.players[curTile.player].cities.append(curTile)
 				if (armyMovedGrid[y][x]):					
 					#look for candidate tiles that army may have come from
 					bestCandTile = None
@@ -187,6 +273,8 @@ class Map(object):
 					curTile.army += 1
 				if (not curTile.isvisible() and curTile.player >= 0 and self.turn % 50 == 0):
 					curTile.army += 1
+				if curTile.player >= 0:
+					self.players[curTile.player].tiles.append(curTile)
 					
 
 		return self
@@ -266,7 +354,7 @@ def evaluateMoveFromFog(tile, candidateTile):
 	return -100
 
 def evaluateIslandFogMove(tile, candidateTile):
-	print(str(tile.army) + " : " + str(candidateTile.army))
+	#print(str(tile.army) + " : " + str(candidateTile.army))
 	if ((candidateTile.isvisible() and tile.army + candidateTile.delta.armyDelta < -1 and candidateTile.player != -1)):
 		tile.player = candidateTile.player
 		tile.delta.newOwner = candidateTile.player
@@ -323,6 +411,16 @@ class Tile(object):
 		self.lastSeen = -1
 		self.mountain = mountain
 		self.delta = TileDelta(x, y)
+		self.left = None
+		self.right = None
+		self.top = None
+		self.bottom = None
+		self.topLeft = None
+		self.topRight = None
+		self.bottomLeft = None
+		self.bottomRight = None
+		self.adjacents = []
+		self.moveable = []
 
 	def __repr__(self):
 		return "(%d,%d) %d (%d)" %(self.x, self.y, self.tile, self.army)
@@ -354,6 +452,7 @@ class Tile(object):
 
 	def isobstacle(self):
 		return self.tile == TILE_OBSTACLE and not self.isCity
+	
 
 	def update(self, map, tile, army, isCity=False, isGeneral=False):
 		#if (self.tile < 0 or tile >= 0 or (tile < TILE_MOUNTAIN and self.tile == map.player_index)): # Remember Discovered Tiles
@@ -420,11 +519,10 @@ class Tile(object):
 				map.cities.remove(self)
 			map.cities.append(self)
 			
-			playerObj = map.players[self.player]
+			#playerObj = map.players[self.player]
 
-			if self in playerObj.cities:
-				playerObj.cities.remove(self)
-			playerObj.cities.append(self)
+			#if not self in playerObj.cities:
+			#	playerObj.cities.append(self)
 			
 			if self in map.generals:
 				map.generals[self._general_index] = None

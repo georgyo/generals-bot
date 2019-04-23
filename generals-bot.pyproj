@@ -23,6 +23,8 @@
   <ItemGroup>
     <Content Include="License.txt" />
     <Content Include="requirements.txt" />
+    <Content Include="run-bot.ps1" />
+    <Content Include="TODO.txt" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="base\bot_base.py" />
@@ -34,6 +36,10 @@
     <Compile Include="bot_ek0x45.py" />
     <Compile Include="bot_blob.py" />
     <Compile Include="bot_path_collect.py" />
+    <Compile Include="DataModels.py" />
+    <Compile Include="SearchUtils.py" />
+    <Compile Include="ViewInfo.py" />
+    <Compile Include="dangerAnalyzer.py" />
     <Compile Include="startup.py" />
     <Compile Include="__init__.py" />
   </ItemGroup>

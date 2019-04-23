@@ -5,6 +5,8 @@
     Generals Bot: Base Bot Class
 '''
 
+import sys
+import traceback
 import logging
 import os
 from queue import Queue
@@ -30,7 +32,7 @@ OPP_GENERAL = 3
 DIRECTIONS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
 class GeneralsBot(object):
-    def __init__(self, updateMethod, name="PurdueBot", gameType="private", privateRoomID="PurdueBot", gameViewer=True, public_server=False):
+    def __init__(self, updateMethod, name="PurdueBot", gameType="private", privateRoomID="PurdueBot", gameViewer=True, public_server=False, alignBottom = False, alignRight = False):
         # Save Config
         self._updateMethod = updateMethod
         self._name = name
@@ -39,6 +41,7 @@ class GeneralsBot(object):
         self._public_server = public_server
 
         # ----- Start Game -----
+        
         self._running = True
         self._move_event = threading.Event()
 
@@ -46,7 +49,7 @@ class GeneralsBot(object):
         _create_thread(self._start_game_thread)
         time.sleep(0.2)
         # Start Chat Message Thead
-        #_create_thread(self._start_chat_thread)
+        _create_thread(self._start_chat_thread)
         #time.sleep(0.2)
         # Start Game Move Thread
         _create_thread(self._start_moves_thread)
@@ -56,13 +59,13 @@ class GeneralsBot(object):
         if (gameViewer) and HAS_VIEWER:
             window_title = "%s (%s)" % (self._name, self._gameType)
             self._viewer = GeneralsViewer(window_title)
-            self._viewer.mainViewerLoop() # Consumes Main Thread
-            time.sleep(0.5)
+            self._viewer.mainViewerLoop(not alignBottom, not alignRight) # Consumes Main Thread
+            time.sleep(1.0)
             os._exit(0) # End Program
 
         while (self._running):
-            time.sleep(1)
-
+            time.sleep(1.0)
+        time.sleep(1.0)
         os._exit(0) # End Program
 
     ######################### Handle Updates From Server #########################
@@ -73,10 +76,10 @@ class GeneralsBot(object):
 
     def _start_game_thread(self):
         # Create Game
-        if (self._gameType in ['1v1','ffa','private','team']):
-            self._game = generals.Generals(self._name, self._name, self._gameType, gameid=self._privateRoomID, public_server=self._public_server)
+        if (self._gameType in ['1v1','ffa','private']):
+            self._game = generals.Generals("efg" + self._name, self._name, self._gameType, gameid=self._privateRoomID, public_server=self._public_server)
         elif (self._gameType == "team"): # team
-            self._game = generals.Generals(self._name, self._name, 'team')
+            self._game = generals.Generals("efg" + self._name, self._name, 'team')
 
         # Start Receiving Updates
         try:
@@ -95,12 +98,29 @@ class GeneralsBot(object):
                     if '_collect_path' in selfDir:
                         self._update.collect_path = self._collect_path
                     if '_moves_realized' in selfDir:
-                        self._update.bottomText = "Realized: "+str(self._moves_realized)
+                        self._update.bottomText = "("+str(self._moves_realized)+")"
                     self._viewer.updateGrid(self._update)
-        except ValueError: # Already in match, restart
-            logging.info("Exit: Already in match in _start_update_loop")
-            time.sleep(45)
+        except ValueError: # Already in match, restart    
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            logging.info(''.join('!! ' + line for line in lines))  # Log it or whatever here
+            
+            logging.info("Exit: Already in queue in _start_update_loop")
+            time.sleep(3)
             os._exit(0) # End Program
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            #logging.info("inf")  # Log it or whatever here
+            #logging.info(''.join('!! ' + line for line in lines))  # Log it or whatever here
+            #logging.info("warn")  # Log it or whatever here
+            #logging.warning(''.join('!! ' + line for line in lines))  # Log it or whatever here
+            logging.info("err")  # Log it or whatever here
+            logging.error(''.join('!! ' + line for line in lines))  # Log it or whatever here
+
+        logging.info("crashed out of update loop, quitting")
+        time.sleep(3)
+        os._exit(0) # End Program
 
     def _set_update(self, update):
         if (update.complete):
@@ -108,6 +128,10 @@ class GeneralsBot(object):
             if '_moves_realized' in dir(self):
                 logging.info("Moves: %d, Realized: %d" % (self._update.turn, self._moves_realized))
             self._running = False
+            time.sleep(2.0)
+            logging.info("terminating")
+            self._game._terminate()
+            time.sleep(1.0)
             os._exit(0) # End Program
             return
 
@@ -118,11 +142,20 @@ class GeneralsBot(object):
     def _start_moves_thread(self):
         self._moves_realized = 0
         while (self._running):
-            self._move_event.wait()
-            self._move_event.clear()
-            self._make_move()
-            self._moves_realized+=1
-
+            try:
+                self._move_event.wait()
+                self._move_event.clear()
+                self._make_move()
+                self._moves_realized+=1
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                #logging.info("inf")  # Log it or whatever here
+                #logging.info(''.join('!! ' + line for line in lines))  # Log it or whatever here
+                #logging.info("warn")  # Log it or whatever here
+                #logging.warning(''.join('!! ' + line for line in lines))  # Log it or whatever here
+                logging.info("err")  # Log it or whatever here
+                logging.error(''.join('!! ' + line for line in lines))  # Log it or whatever here
     def _make_move(self):
         self._updateMethod(self, self._update)
 
