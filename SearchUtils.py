@@ -166,8 +166,6 @@ def _shortestPathHeur(goal, cur):
 
 
 def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restrictionEvalFuncs = None):
-
-			
 	frontier = PriorityQueue()
 	came_from = {}
 	cost_so_far = {}
@@ -271,135 +269,13 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 
 
 
-
-#def breadth_first_find(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, noNeutralCities = False, negativeTiles = None, skipTiles = None, searchingPlayer = -2):
-#	if searchingPlayer == -2:
-#		searchingPlayer = startTiles[0].player
-#	frontier = PriorityQueue()
-#	visited = [[{} for x in range(map.rows)] for y in range(map.cols)]
-#	globalVisitedSet = set()
-#	if isinstance(startTiles, dict):
-#		for tile in startTiles.keys():
-#			(startDist, startArmy) = startTiles[tile]
-#			if tile.mountain:
-#				#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
-#				continue
-#			goalInc = 0
-#			if (tile.isCity or tile.isGeneral) and tile.player != -1:
-#				goalInc = -0.5
-#			startArmy = tile.army - 1
-#			if tile.player != searchingPlayer:
-#				startArmy = 0 - tile.army - 1
-#				goalInc *= -1
-#			visited[tile.x][tile.y][startDist] = (startArmy, None)
-#			startVal = (startDist, 0 - startArmy)
-#			frontier.put((startVal, tile, startDist, startArmy, goalInc))
-#	else:
-#		for tile in startTiles:
-#			if tile.mountain:
-#				#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
-#				continue
-#			goalInc = 0
-#			startArmy = tile.army - 1
-#			if (tile.isCity or tile.isGeneral) and tile.player != -1:
-#				goalInc = -0.5
-#			if tile.player != searchingPlayer:
-#				startArmy = 0 - tile.army - 1
-#				goalInc *= -1
-#			visited[tile.x][tile.y][0] = (startArmy, None)
-#			startVal = (0, 0 - startArmy)
-#			frontier.put((startVal, tile, 0, startArmy, goalInc))
-#	start = time.time()
-#	iter = 0
-#	foundGoal = False
-#	foundArmy = -100000
-#	foundDist = 1000
-#	endNode = None
-#	depthEvaluated = 0
-#	while not frontier.empty():
-#		iter += 1
-#		if (iter % 100 == 0 and time.time() - start > maxTime):
-#			logging.info("BFS-FIND BREAKING")
-#			break
-			
-#		(prioVals, current, dist, army, goalInc) = frontier.get()
-#		if current in globalVisitedSet or (skipTiles != None and current in skipTiles):
-#			continue
-#		globalVisitedSet.add(current)
-#		if goalFunc(current, army, dist) and (dist < foundDist or (dist == foundDist and army > foundArmy)):
-#			foundGoal = True
-#			foundDist = dist
-#			foundArmy = army
-#			endNode = current
-#		if dist > depthEvaluated:
-#			depthEvaluated = dist
-#			if foundGoal:
-#				break
-#		if (dist <= maxDepth and not foundGoal):
-#			for next in current.moveable: #new spots to try
-					
-#				if (next.mountain or (noNeutralCities and next.player == -1 and next.isCity) or (not next.discovered and next.isobstacle())):
-#					continue
-#				inc = 0 if not ((next.isCity and next.player != -1) or next.isGeneral) else dist / 2
-#				#new_cost = cost_so_far[current] + graph.cost(current, next)
-#				nextArmy = army - 1
-#				if (negativeTiles == None or next not in negativeTiles):
-#					if (searchingPlayer == next.player):
-#						nextArmy += next.army + inc
-#					else:
-#						nextArmy -= (next.army + inc)
-#				newDist = dist + 1
-#				if newDist not in visited[next.x][next.y] or visited[next.x][next.y][newDist][0] < nextArmy:
-#					visited[next.x][next.y][newDist] = (nextArmy, current)
-#				frontier.put(((newDist, 0 - nextArmy), next, newDist, nextArmy, goalInc))
-
-#	logging.info("BFS-FIND ITERATIONS {}, DURATION: {}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
-#	if foundDist >= 1000:
-#		return (None, None)
-		
-#	node = endNode
-#	dist = foundDist
-#	nodes = []
-#	army = foundArmy
-#	# logging.info(json.dumps(visited))
-#	# logging.info("PPRINT FULL")
-#	# logging.info(pformat(visited))
-
-#	while (node != None):
-#		# logging.info("ARMY {} NODE {},{}  DIST {}".format(army, node.x, node.y, dist))
-#		nodes.append((army, node))
-
-#		# logging.info(pformat(visited[node.x][node.y]))
-#		(army, node) = visited[node.x][node.y][dist]
-#		dist -= 1
-#	nodes.reverse()
-#	(startArmy, startNode) = nodes[0]
-#	pathStart = PathNode(startNode, None, foundArmy, foundDist, -1, None)
-#	path = pathStart
-#	dist = foundDist
-#	for i, armyNode in enumerate(nodes[1:]):
-#		(curArmy, curNode) = armyNode
-#		if (curNode != None):
-#			# logging.info("curArmy {} NODE {},{}".format(curArmy, curNode.x, curNode.y))
-#			path = PathNode(curNode, path, curArmy, dist, -1, None) 
-#			dist -= 1
-
-#	# while (node != None):
-#	# 	army, node = visited[node.x][node.y][dist]
-#	# 	if (node != None):
-#	# 		dist -= 1
-#	# 		path = PathNode(node, path, army, dist, -1, None) 
-
-#	logging.info("BFS-FIND found path OF LENGTH {} VALUE {}\n{}".format(pathStart.turn, pathStart.value, stringPath(path)))
-#	return (pathStart, path)
-
 def default_sort_func(current, army, dist, enemyTileCount, cityCount, armySum):
 	#return (dist, 0 - army, 0 - enemyTileCount, current.x, current.y)
 	return (dist, 0 - cityCount, 0 - enemyTileCount, 0 - armySum, current.x, current.y)
 
-def breadth_first_find(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, noNeutralCities = False, negativeTiles = None, skipTiles = None, searchingPlayer = -2, sortFunc = None):
+def breadth_first_find(map, startTiles, goalFunc, maxTime = 0.2, maxDepth = 100, noNeutralCities = False, negativeTiles = None, skipTiles = None, searchingPlayer = -2, sortFunc = None):
 	if searchingPlayer == -2:
-		searchingPlayer = startTiles[0].player
+		searchingPlayer = map.player_index
 	if (sortFunc == None):
 		sortFunc = default_sort_func
 	frontier = PriorityQueue()
@@ -445,7 +321,7 @@ def breadth_first_find(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, 
 	depthEvaluated = 0
 	while not frontier.empty():
 		iter += 1
-		if (iter % 100 == 0 and time.time() - start > maxTime):
+		if (iter % 1000 == 0 and time.time() - start > maxTime):
 			logging.info("BFS-FIND BREAKING")
 			break
 			
@@ -531,10 +407,17 @@ def breadth_first_find(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, 
 
 
 
+class Counter(object):
+	def __init__(self, value):
+		self.value = value
+
+	def add(self, value):
+		self.value = self.value + value
+
 
 def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, noNeutralCities = False, negativeTiles = None, skipTiles = None, searchingPlayer = -2):
 	if searchingPlayer == -2:
-		searchingPlayer = startTiles[0].player
+		searchingPlayer = map.player_index
 	frontier = deque()
 	visited = [[{} for x in range(map.rows)] for y in range(map.cols)]
 	globalVisitedSet = set()
@@ -575,7 +458,7 @@ def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth 
 	depthEvaluated = 0
 	while len(frontier) > 0:
 		iter += 1
-		if (iter % 100 == 0 and time.time() - start > maxTime):
+		if (iter % 1000 == 0 and time.time() - start > maxTime):
 			logging.info("BFS-FIND BREAKING")
 			break
 			
@@ -649,6 +532,50 @@ def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth 
 
 	logging.info("BFS-FIND-QUEUE found path OF LENGTH {} VALUE {}\n{}".format(pathStart.turn, pathStart.value, stringPath(path)))
 	return (pathStart, path)
+
+
+
+
+
+
+def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc = None, skipFunc = None, skipTiles = None, searchingPlayer = -2):
+	if searchingPlayer == -2:
+		searchingPlayer = map.player_index
+	frontier = deque()
+	globalVisitedSet = set()
+
+	for tile in startTiles:
+		if tile.mountain:
+			#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
+			continue
+		frontier.appendleft((tile, 0))
+	start = time.time()
+	iter = 0
+	depthEvaluated = 0
+	while len(frontier) > 0:
+		iter += 1
+		if (iter % 1000 == 0 and time.time() - start > maxTime):
+			logging.info("BFS-FIND BREAKING")
+			break
+			
+		(current, dist) = frontier.pop()
+		if current in globalVisitedSet:
+			continue
+		globalVisitedSet.add(current)
+		if (negativeFunc == None or not negativeFunc(current)):
+			foreachFunc(current)
+
+		if dist > depthEvaluated:
+			depthEvaluated = dist
+		if (dist <= maxDepth):
+			for next in current.moveable: #new spots to try					
+				if (next.mountain or (skipTiles != None and next in skipTiles) or (skipFunc != None and skipFunc(next))):
+					continue
+					
+				newDist = dist + 1
+				frontier.appendleft((next, newDist))
+	logging.info("Completed breadth_first_foreach ITERATIONS {}, DURATION: {}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+
 
 
 

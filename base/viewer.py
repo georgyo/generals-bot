@@ -476,7 +476,7 @@ class GeneralsViewer(object):
 					elif tile.isobstacle(): # Obstacle
 						color = GRAY_DARK
 					elif not tile.discovered:
-						color = UNDISCOVERED_GRAY					
+						color = UNDISCOVERED_GRAY
 					elif tile.isCity and tile.player == -1:
 						color = UNDISCOVERED_GRAY
 						if (tile.isvisible()):
@@ -486,7 +486,11 @@ class GeneralsViewer(object):
 						color = GRAY
 					else:
 						color_font = BLACK
-
+					
+					if not tile in self._map.ekBot.reachableTiles and not tile.isobstacle() and not tile.isCity and not tile.mountain:
+						textVal = "    Z"
+						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))
+						
 					# Draw Text Value
 					if (tile.army != 0 and tile.discovered): # Don't draw on empty tiles
 						textVal = str(tile.army)

@@ -22,6 +22,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="License.txt" />
+    <Content Include="MentalFramework.txt" />
     <Content Include="requirements.txt" />
     <Content Include="run-bot.ps1" />
     <Content Include="TODO.txt" />
@@ -35,6 +36,7 @@
     <Compile Include="base\__init__.py" />
     <Compile Include="bot_ek0x45.py" />
     <Compile Include="bot_blob.py" />
+    <Compile Include="bot_ek0x45v2.py" />
     <Compile Include="bot_path_collect.py" />
     <Compile Include="DataModels.py" />
     <Compile Include="SearchUtils.py" />

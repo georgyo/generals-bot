@@ -451,7 +451,7 @@ class Tile(object):
 		return self.mountain
 
 	def isobstacle(self):
-		return self.tile == TILE_OBSTACLE and not self.isCity
+		return (self.mountain or self.tile == TILE_OBSTACLE) and not self.isCity
 	
 
 	def update(self, map, tile, army, isCity=False, isGeneral=False):
