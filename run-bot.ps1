@@ -1,50 +1,5 @@
+﻿
 
-
-function run-botonce2 { 
-    Param(
-        $name, 
-        $game, 
-        [switch]$public, 
-        [switch]$right, 
-        $privateGame, 
-        [switch]$noui,
-        $path = "C:\generals-bot\bot_ek0x45.py",
-        $userID = $null
-    )
-    $df = Get-Date -format yyyy-MM-dd_hh-mm-ss 
-    $arguments = [System.Collections.ArrayList]::new()
-    if ($privateGame) {
-        $game = "private"
-        [void] $arguments.Add("--roomID")
-        [void] $arguments.Add($privateGame)
-    }
-    if ($userID) {
-        [void] $arguments.Add("--userid")
-        [void] $arguments.Add($userID)
-    }
-    if ($right) { [void] $arguments.Add("--right") }
-    if ($noui) { [void] $arguments.Add("--no-ui") }
-    if ($public) { 
-        [void] $arguments.Add("--public")
-    }
-    $argString = $([string]::Join(" ", $arguments))
-    Write-Verbose $argString -Verbose
-    Start-Transcript -path "H:\GeneralsLogs\$name-$game-$df$privateGame.txt"
-    try {
-        Write-Verbose "C:\Python36-32\python.exe $path -name $name -g $game $argString" -verbose
-        C:\Python36-32\python.exe "$path" -name $name -g $game @arguments 2>&1 
-    } 
-    catch 
-    {
-        Write-Error $_
-    }
-    finally 
-    {
-        stop-transcript
-    }
-    PING 127.0.0.1 -n 1 | out-null
-	Get-ChildItem "H:\GeneralsLogs" -Recurse | ? { $_.LastWriteTime -lt (get-date).AddMinutes(-30) } | Remove-Item -Force -Recurse -ErrorAction Ignore
-}
 
 function run-botonce { 
     Param(
@@ -78,6 +33,10 @@ function run-botonce {
     $argString = $([string]::Join(" ", $arguments))
     Write-Verbose $argString -Verbose
 
+	# this exeString is a hack due to the powershell memory leak, need to keep opening new PS processes
+	# or we fill up memory to 1GB per powershell window overnight :(
+	# Maybe fixed in PS 5.2? Wouldn't know because can't install on win8 lul
+
 	$exeString = @"
 	`$name = '$name'
 	`$game = '$game'
@@ -88,9 +47,12 @@ function run-botonce {
 	`$arguments = @('$([string]::Join("', '", $arguments))')
 	Write-Output "arguments $([string]::Join(', ', $arguments))"
 	`$cleanName = '$name'.Replace('[', '').Replace(']', '')
+	`$logName = "`$cleanName-$game-$df$privateGame"
+	`$logFile = "`$logName.txt"
+	`$logPath = "H:\GeneralsLogs\`$logFile"
 	if (-not `$$($nolog.ToString()))
 	{
-		Start-Transcript -path `"H:\GeneralsLogs\`$cleanName-$game-$df$privateGame.txt`"
+		Start-Transcript -path "`$logPath"
 	}
     try {
         #Write-Verbose `"C:\Python36-32\python.exe $path -name $name -g $game $argString`" -verbose
@@ -105,14 +67,55 @@ function run-botonce {
 		if (-not `$$($nolog.ToString()))
 		{
 			stop-transcript
+			`$content = Get-Content `$logPath
+			`$prevLine = [string]::Empty
+			`$repId = `$null
+			`$newContent = foreach (`$line in `$content)
+			{
+				if (`$line -ne [string]::Empty)
+				{
+					`$prevLine = `$line
+					`$line
+					if (`$repId -eq `$null -and `$line -match '''replay_id'': ''([^'']+)''')
+					{
+						`$repId = `$Matches[1]
+					}
+				}
+				elseif (`$prevLine -eq [string]::Empty)
+				{
+					`$line
+					`$prevLine = `"h`"
+				}
+				else 
+				{
+					`$prevLine = [string]::Empty
+				}
+			}
+			if (`$repId)
+			{
+				`$folder = Get-ChildItem "H:\GeneralsLogs" -Filter "*`$repId*" -Directory
+				`$newLogPath = Join-Path `$folder.FullName "_`$logFile"
+				`$newContent | Set-Content -Path `$newLogPath -Force
+				`$newFolder = Move-Item `$folder.FullName "H:\GeneralsLogs\GroupedLogs" -PassThru
+				`$newName = "`$logName---`$repId"
+				Rename-Item `$newFolder.FullName `$newName -PassThru
+				Write-Warning "`$newName"
+				Write-Warning "`$newName"
+				Write-Warning "`$newName"
+			}
+			Remove-Item `$logPath -Force
 		}
     }
     PING 127.0.0.1 -n 1 | out-null
-	Get-ChildItem "H:\GeneralsLogs" -Recurse | ? { `$_.LastWriteTime -lt (get-date).AddMinutes(-30) } | Remove-Item -Force -Recurse -ErrorAction Ignore
+	Get-ChildItem "H:\GeneralsLogs" | ? { `$_.FullName -notlike '*_chat*' } | ? { `$_.LastWriteTime -lt (get-date).AddMinutes(-30) } | Remove-Item -Force -Recurse -ErrorAction Ignore
 "@
 
-	Write-Verbose $exeString -Verbose
-	start Powershell $exeString -Wait -NoNewWindow
+	$randNums = 1..10 | Get-Random -Count 10
+	$randName = $randNums -join ''
+	$ps1File = "C:\temp\$randName.ps1"
+	$exeString | Out-File $ps1File
+	Write-Verbose $ps1File -Verbose
+	start Powershell "-File $ps1File" -Wait -NoNewWindow
 	Write-Verbose 'Powershell finished, sleeping' -Verbose
 }
 
@@ -191,7 +194,7 @@ function create-checkpoint {
 	Param(
 		$source = 'C:\generals-bot\',
 		$dest = 'C:\generals-bot-checkpoint\',
-		$backup = $null
+		$backup = "C:\generals-bot-historical\generals-bot-$(Get-Date -Format 'yyyy-MM-dd')"
 	)
 	if ($backup)
 	{

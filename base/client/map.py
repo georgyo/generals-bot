@@ -128,10 +128,10 @@ class Map(object):
 					tileDelta = score['tiles'] - lastScore['tiles']
 					
 					#print("player {} delta {}".format(player.index, delta))
-					if (tileDelta >= 0 and tileDelta < 2 and turn % 50 != 0): #ignore army bonus turns and other player captures				
+					if (abs(tileDelta) <= 2 and turn % 50 != 0): #ignore army bonus turns and other player captures				
 						delta = score['total'] - lastScore['total']
 						if (delta > 0):
-							cityCounts[j] = max(delta, cityCounts[j])		
+							cityCounts[j] = max(delta, cityCounts[j])
 			last = scores
 		self.remainingPlayers = 0
 		for i, player in enumerate(self.players):
@@ -147,9 +147,9 @@ class Map(object):
 					player.delta25tiles = self.players[i].tileCount - earliest[i]['tiles']
 				if (self.scores[i]['dead'] == True):
 					player.leftGame = True
+					# don't immediately set 'dead' so that we keep attacking disconnected player
 					if (self.scores[i]['tiles'] == 0):
 						player.dead = True
-					
 				else:
 					self.remainingPlayers += 1
 
@@ -160,10 +160,11 @@ class Map(object):
 		#print("\n\n    ~~~~~~~~~\nPlayer captured: {} by {}\n    ~~~~~~~~~\n".format(capturer, capturee))
 		capturerIdx = self.get_id_from_username(capturer)
 		captureeIdx = self.get_id_from_username(capturee)
+		self.ekBot.history.captured_player(self.turn, captureeIdx, capturerIdx)
 		print("\n\n    ~~~~~~~~~\nPlayer captured: {} ({}) by {} ({})\n    ~~~~~~~~~\n".format(capturee, captureeIdx, capturer, capturerIdx))
 		
 		if (capturerIdx == self.player_index):
-			#ignore, player was us
+			#ignore, player was us, our tiles will update
 			return
 		if (captureeIdx >= 0):
 			capturedGen = self.generals[captureeIdx]
@@ -176,6 +177,7 @@ class Map(object):
 				for y in range(self.rows):
 					tile = self.grid[y][x]
 					if tile.player == captureeIdx:
+						tile.discoveredAsNeutral = True
 						tile.player = capturerIdx
 						tile.army = tile.army // 2
 						if (tile.isCity and not tile in capturingPlayer.cities):
@@ -408,6 +410,7 @@ class Tile(object):
 		self.player = player
 		self.visible = False
 		self.discovered = False
+		self.discoveredAsNeutral = False
 		self.lastSeen = -1
 		self.mountain = mountain
 		self.delta = TileDelta(x, y)

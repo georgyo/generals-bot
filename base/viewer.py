@@ -48,8 +48,6 @@ INFO_ROW_HEIGHT = 25
 PLUS_DEPTH = 9
 
 
-
-
 class GeneralsViewer(object):
 	def __init__(self, name=None):
 		self._name = name
@@ -114,7 +112,11 @@ class GeneralsViewer(object):
 		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 5 / 8, CELL_HEIGHT * 5 / 8), 1)
 		self.lineArrow = s
 		self.repId = self._map.replay_url.split("/").pop()
-		self.logDirectory = "H:\\GeneralsLogs\\{}-{}".format(self._map.usernames[self._map.player_index], self.repId)
+		fileSafeUserName = self._map.usernames[self._map.player_index]
+		fileSafeUserName = fileSafeUserName.replace("[Bot] ", "")
+		fileSafeUserName = fileSafeUserName.replace("[Bot]", "")
+		#logging.info("\n\n\nFILE SAFE USERNAME\n {}\n\n".format(fileSafeUserName))
+		self.logDirectory = "H:\\GeneralsLogs\\{}-{}".format(fileSafeUserName, self.repId)
 		if not os.path.exists(self.logDirectory):
 			try:
 				os.makedirs(self.logDirectory)
@@ -133,7 +135,8 @@ class GeneralsViewer(object):
 
 		done = False
 		while not done:
-			if (self._receivedUpdate):
+			if (self._receivedUpdate and self._map.ekBot.viewInfo.readyToDraw):
+				self._map.ekBot.viewInfo.readyToDraw = False
 				self._drawGrid()
 				self._receivedUpdate = False
 				self._readyRender = True
@@ -150,7 +153,7 @@ class GeneralsViewer(object):
 					print("Click ", pos, "Grid coordinates: ", row, column)
 
 
-			time.sleep(0.1)
+			time.sleep(0.03)
 		time.sleep(2.0)
 		pygame.quit() # Done.  Quit pygame.
 
@@ -264,52 +267,23 @@ class GeneralsViewer(object):
 
 			# Draw path
 			#print("drawing path")
-			path = self._map.ekBot.curPath
-			alpha = 255
-			alphaDec = 8
-			alphaMin = 145
-			while (path != None and path.parent != None):
-				s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
-				# first, "erase" the surface by filling it with a color and
-				# setting this color as colorkey, so the surface is empty
-				s.fill(WHITE)
-				s.set_colorkey(WHITE)
-			
-				# after drawing the circle, we can set the 
-				# alpha value (transparency) of the surface
-				tile = path.tile
-				toTile = path.parent.tile			
-				#print("drawing path {},{} -> {},{}".format(tile.x, tile.y, toTile.x, toTile.y))
-				pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
-				pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
-				xOffs = 0
-				yOffs = 0
-				pygame.draw.polygon(s, BLACK, self.Arrow)
-				if (tile.x - toTile.x > 0): #left
-					#print("left " + str(tile.x) + "," + str(tile.y))
-					s = pygame.transform.rotate(s, 90)
-					xOffs = -0.3
-				elif (tile.x - toTile.x < 0): #right
-					#print("right " + str(tile.x) + "," + str(tile.y))
-					s = pygame.transform.rotate(s, 270)
-					xOffs = 0.3		
-				elif (tile.y - toTile.y > 0): #up
-					#print("up " + str(tile.x) + "," + str(tile.y))
-					yOffs = -0.3
-				elif (tile.y - toTile.y < 0): #down
-					#print("down " + str(tile.x) + "," + str(tile.y))
-					s = pygame.transform.flip(s, False, True)
-					yOffs = 0.3
-
-			
-				s.set_alpha(alpha)
-				self._screen.blit(s, (pos_left + xOffs * CELL_WIDTH, pos_top + yOffs * CELL_HEIGHT))
-				path = path.parent	
-				alpha -= alphaDec					
-				if (alpha < alphaMin):
-					alpha = alphaMin
-
+				
 			self.drawGathers()
+			
+			while len(self._map.ekBot.viewInfo.paths) > 0:
+				pColorer = self._map.ekBot.viewInfo.paths.pop()	
+				self.draw_path(pColorer.path, pColorer.color[0], pColorer.color[1], pColorer.color[2], pColorer.alpha, pColorer.alphaDecreaseRate, pColorer.alphaMinimum)
+				
+			alpha = 250
+			alphaDec = 4
+			alphaMin = 135
+			path = None
+			if self._map.ekBot.curPath != None:
+				path = self._map.ekBot.curPath
+			self.draw_path(path, 0, 200, 50, alpha, alphaDec, alphaMin)
+
+
+			
 
 			
 			if (self._map.ekBot.dangerAnalyzer != None and self._map.ekBot.dangerAnalyzer.anyThreat):
@@ -319,51 +293,11 @@ class GeneralsViewer(object):
 						continue
 					# Draw danger path
 					#print("drawing path")
-					alpha = 255
-					alphaDec = 10
+					alpha = 200
+					alphaDec = 6
 					alphaMin = 145				
+					self.draw_path(threat.path, 150, 0, 0, alpha, alphaDec, alphaMin)
 				
-					path = threat.path.pathMove
-					while path != None:
-						s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
-						# first, "erase" the surface by filling it with a color and
-						# setting this color as colorkey, so the surface is empty
-						s.fill(WHITE)
-						s.set_colorkey(WHITE)
-			
-						# after drawing the circle, we can set the 
-						# alpha value (transparency) of the surface
-						tile = path.move.source
-						toTile = path.move.dest
-						#print("drawing path {},{} -> {},{}".format(tile.x, tile.y, toTile.x, toTile.y))
-						pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
-						pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
-						xOffs = 0
-						yOffs = 0
-						pygame.draw.polygon(s, BLACK, self.Arrow)
-						if (tile.x - toTile.x > 0): #left
-							#print("left " + str(tile.x) + "," + str(tile.y))
-							s = pygame.transform.rotate(s, 90)
-							xOffs = -0.3
-						elif (tile.x - toTile.x < 0): #right
-							#print("right " + str(tile.x) + "," + str(tile.y))
-							s = pygame.transform.rotate(s, 270)
-							xOffs = 0.3		
-						elif (tile.y - toTile.y > 0): #up
-							#print("up " + str(tile.x) + "," + str(tile.y))
-							yOffs = -0.3
-						elif (tile.y - toTile.y < 0): #down
-							#print("down " + str(tile.x) + "," + str(tile.y))
-							s = pygame.transform.flip(s, False, True)
-							yOffs = 0.3
-
-			
-						s.set_alpha(alpha)
-						self._screen.blit(s, (pos_left + xOffs * CELL_WIDTH, pos_top + yOffs * CELL_HEIGHT))
-						path = path.next	
-						alpha -= alphaDec					
-						if (alpha < alphaMin):
-							alpha = alphaMin
 		
 			for tile in self._map.ekBot.viewInfo.lastSearched:
 				pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
@@ -488,7 +422,7 @@ class GeneralsViewer(object):
 						color_font = BLACK
 					
 					if not tile in self._map.ekBot.reachableTiles and not tile.isobstacle() and not tile.isCity and not tile.mountain:
-						textVal = "    Z"
+						textVal = "   X"
 						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))
 						
 					# Draw Text Value
@@ -521,6 +455,56 @@ class GeneralsViewer(object):
 			raise
 			# print("Unexpected error:", sys.exc_info()[0])
 	
+	def draw_path(self, pathObject, R, G, B, alphaStart, alphaDec, alphaMin):
+		if pathObject == None:
+			return
+		path = pathObject.start
+		alpha = alphaStart
+		key = WHITE
+		color = (R,G,B)
+		while (path != None and path.next != None):
+			s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
+			# first, "erase" the surface by filling it with a color and
+			# setting this color as colorkey, so the surface is empty
+			s.fill(key)
+			s.set_colorkey(key)
+			
+			# after drawing the circle, we can set the 
+			# alpha value (transparency) of the surface
+			tile = path.tile
+			toTile = path.next.tile			
+			#print("drawing path {},{} -> {},{}".format(tile.x, tile.y, toTile.x, toTile.y))
+			pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
+			pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
+			xOffs = 0
+			yOffs = 0
+			pygame.draw.polygon(s, color, self.Arrow)
+			pygame.draw.polygon(s, BLACK, self.Arrow, 2)
+			if (tile.x - toTile.x > 0): #left
+				#print("left " + str(tile.x) + "," + str(tile.y))
+				s = pygame.transform.rotate(s, 90)
+				xOffs = -0.3
+			elif (tile.x - toTile.x < 0): #right
+				#print("right " + str(tile.x) + "," + str(tile.y))
+				s = pygame.transform.rotate(s, 270)
+				xOffs = 0.3		
+			elif (tile.y - toTile.y > 0): #up
+				#print("up " + str(tile.x) + "," + str(tile.y))
+				yOffs = -0.3
+			elif (tile.y - toTile.y < 0): #down
+				#print("down " + str(tile.x) + "," + str(tile.y))
+				s = pygame.transform.flip(s, False, True)
+				yOffs = 0.3
+
+			
+			s.set_alpha(alpha)
+			self._screen.blit(s, (pos_left + xOffs * CELL_WIDTH, pos_top + yOffs * CELL_HEIGHT))
+			path = path.next	
+			alpha -= alphaDec					
+			if (alpha < alphaMin):
+				alpha = alphaMin
+
+
 	def drawGathers(self):
 		if (self._map.ekBot.gatherNodes != None):
 			q = deque()

@@ -81,6 +81,7 @@ class GeneralsBot(object):
         elif (self._gameType == "team"): # team
             self._game = generals.Generals("efg" + self._name, self._name, 'team')
 
+
         # Start Receiving Updates
         try:
             for update in self._game.get_updates():

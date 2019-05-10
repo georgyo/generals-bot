@@ -14,108 +14,6 @@ from queue import PriorityQueue
 from pprint import pprint,pformat
 
 
-class Path(object):
-	def __init__(self, pathMove, pathLength, value, cityCount, pathDict):
-		self.pathMove = pathMove
-		self.value = value
-		self.movesLeft = pathLength
-		self.cityCount = cityCount
-		self.pathDict = pathDict
-
-	def GetNextMove():
-		move = self.pathMove.move
-		self.pathMove = self.pathMove.next
-		self.movesLeft -= 1
-		return move
-
-def PathFromPathNode(pathEnd, path):
-	if pathEnd == None or path == None:
-		return None
-	pathLength = pathEnd.turn
-	value = pathEnd.value
-	cityCount = path.cityCount
-	pathDict = pathEnd.pathDict
-
-	node = path
-	turn = 0
-	
-	curVal = node.tile.army
-	head = PathMove(Move(node.tile, node.parent.tile), None, node.parent.value, turn)
-	
-	prev = head
-	node = node.parent
-	while (node.parent != None):
-		turn += 1
-		prev.next = PathMove(Move(node.tile, node.parent.tile), None, node.parent.value, turn)
-		prev = prev.next
-		node = node.parent
-	
-	return Path(head, pathLength, value, cityCount, pathDict)
-
-def get_tile_list_from_path_tuple(pathObj):
-	return get_tile_list_from_path(pathObj[1])
-
-def get_tile_list_from_path(path):
-	if path == None:
-		return None
-	pathList = []
-	while path != None:
-		pathList.append(path.tile)
-		path = path.parent
-	return pathList
-	
-
-def get_tile_set_from_path_tuple(pathObj):
-	return get_tile_set_from_path(pathObj[1])
-
-def get_tile_set_from_path(path):
-	tiles = set()
-	while path != None:
-		tiles.add(path.tile)
-		path = path.parent
-	return tiles
-
-
-def reverse_path_tuple(pathTuple):
-	(pathStart, path) = pathTuple
-	return (reverse_path(pathStart), reverse_path(path))
-
-def reverse_path(path):
-	pathLast = path
-	dist = path.turn
-	newPath = PathNode(path.tile, None, path.value, 0, 0, None)
-	path = path.parent
-	while (path != None):		
-		newPath = PathNode(path.tile, newPath, path.value, 0, 0, None)
-		path = path.parent
-	return newPath
-
-
-def get_player_army_amount_on_path(path, player, startIdx = 0, endIdx = 1000):
-	value = 0
-	idx = 0
-	while (path != None):
-		if (path.tile.player == player and idx >= startIdx and idx <= endIdx):
-			value += (path.tile.army - 1)
-		path = path.parent
-		idx += 1
-	return value
-
-
-class PathMove(object):
-	def __init__(self, move, next, value, turn):
-		self.move = move
-		self.next = next
-		self.turn = turn
-	def __gt__(self, other):
-		if (other == None):
-			return True
-		return self.turn > other.turn
-	def __lt__(self, other):
-		if (other == None):
-			return True
-		return self.turn < other.turn	
-
 class PathNode(object):
 	def __init__(self, tile, parent, value, turn, cityCount, pathDict):
 		self.tile = tile
@@ -134,12 +32,36 @@ class PathNode(object):
 			return True
 		return self.turn < other.turn	
 
-def stringPath(pathNode):
-	val = "[{}] ".format(pathNode.value) 
+def get_tile_list_from_path(pathObject):
+	path = pathObject.start
+	if path == None:
+		return None
+	pathList = []
+	while path != None:
+		pathList.append(path.tile)
+		path = path.next
+	return pathList
+	
+
+def get_tile_set_from_path(pathObject):
+	return pathObject.tileSet
+
+
+def reverse_path(path):
+	newPath = path.get_reversed()
+	return newPath
+
+
+def get_player_army_amount_on_path(path, player, startIdx = 0, endIdx = 1000):
+	value = 0
+	idx = 0
+	pathNode = path.start
 	while (pathNode != None):
-		val = val + str(pathNode.tile.x) + "," + str(pathNode.tile.y) + " "
-		pathNode = pathNode.parent
-	return val		
+		if (pathNode.tile.player == player and idx >= startIdx and idx <= endIdx):
+			value += (pathNode.tile.army - 1)
+		pathNode = pathNode.next
+		idx += 1
+	return value
 
 
 class GatherNode(object):

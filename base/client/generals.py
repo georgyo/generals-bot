@@ -17,7 +17,7 @@ from . import map
 _ENDPOINT = "ws://botws.generals.io/socket.io/?EIO=3&transport=websocket"
 _ENDPOINT_PUBLIC = "ws://ws.generals.io/socket.io/?EIO=3&transport=websocket"
 
-
+_LOG_WS = False
 # _BOT_KEY = None
 #_BOT_KEY = "eklipzai"
 #_BOT_KEY = "ekbot42"
@@ -153,13 +153,14 @@ class Generals(object):
 				self.chatLogFile = "H:\\GeneralsLogs\\_chat\\" + self.username + "-" + self.mode + "-" + self._start_data['replay_id'] + ".txt" 
 
 				os.makedirs("H:\\GeneralsLogs\\_chat", exist_ok=True)
-				try:
-					with open(self.logFile, "a+") as myfile:
-						for log in self.earlyLogs:
-							myfile.write(log)
-						self.earlyLogs = None
-				except:
-					logging.info("!!!!!!!!!!\n!!!!!!!!!!!!!\n!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!\ncouldn't write EARLY LOGS to file")					
+				if _LOG_WS:
+					try:
+						with open(self.logFile, "a+") as myfile:
+							for log in self.earlyLogs:
+								myfile.write(log)
+							self.earlyLogs = None
+					except:
+						logging.info("!!!!!!!!!!\n!!!!!!!!!!!!!\n!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!\ncouldn't write EARLY LOGS to file")					
 			elif msg[0] == "game_update":
 				yield self._make_update(msg[1])
 			elif msg[0] in ["game_won", "game_lost"]:
@@ -225,11 +226,12 @@ class Generals(object):
 	def close(self):
 		with self._lock:
 			self._ws.close()
-		if (self.logFile == None):
-			self.earlyLogs.append("\nClosed WebSocket")
-		else:
-			with open(self.logFile, "a+") as myfile:
-				myfile.write("\nClosed WebSocket")
+		if _LOG_WS:
+			if (self.logFile == None):
+				self.earlyLogs.append("\nClosed WebSocket")
+			else:
+				with open(self.logFile, "a+") as myfile:
+					myfile.write("\nClosed WebSocket")
 
 	def _make_update(self, data):
 		if not self._seen_update:
@@ -257,24 +259,44 @@ class Generals(object):
 			#time.sleep(1)
 			self.close()
 
+
+	def send_clear_moves(self):		
+		logging.info("\n\nSending clear_moves")
+		with self._lock:
+			self._send(["clear_moves"])
+
 	def _send_forcestart(self):
 		time.sleep(3)
 		while 'replay_id' not in self._start_data:
-			self._send(["set_force_start", self._gameid, True])
+			if (self._gameid != None):
+				#map size
+				#options = {
+				#	"width": "0.99",
+				#	"height": "0.99",
+				#	"city_density": "0.99",
+				#	#"mountain_density": "0.5"
+				#	#"swamp_density": "1"
+				#}
+					
+				#self._send(["set_custom_options", self._gameid, options
+				time.sleep(0.5)
+				self._send(["make_custom_public", self._gameid])
+				time.sleep(0.5)
+			self._send(["set_force_start", self._gameid, True])				
 			logging.info("Sent force_start")
-			time.sleep(10)
+			time.sleep(5)
 
 	def _start_sending_heartbeat(self):
 		while True:
 			try:
 				with self._lock:
 					self._ws.send("2")
-				
-				if (self.logFile == None):
-					self.earlyLogs.append("\n2")
-				else:
-					with open(self.logFile, "a+") as myfile:
-						myfile.write("\n2")
+				if _LOG_WS:
+					if (self.logFile == None):
+						self.earlyLogs.append("\n2")
+					else:
+						with open(self.logFile, "a+") as myfile:
+							myfile.write("\n2")
 			except WebSocketConnectionClosedException:
 				break
 			time.sleep(10)
@@ -284,12 +306,12 @@ class Generals(object):
 			toSend = "42" + json.dumps(msg)
 			with self._lock:
 				self._ws.send(toSend)
-			
-			if (self.logFile == None):
-				self.earlyLogs.append("\n" + toSend)
-			else:
-				with open(self.logFile, "a+") as myfile:
-					myfile.write("\n" + toSend)
+			if _LOG_WS:
+				if (self.logFile == None):
+					self.earlyLogs.append("\n" + toSend)
+				else:
+					with open(self.logFile, "a+") as myfile:
+						myfile.write("\n" + toSend)
 		except WebSocketConnectionClosedException:
 			pass
 

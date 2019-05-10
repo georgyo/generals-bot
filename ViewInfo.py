@@ -15,6 +15,15 @@ from pprint import pprint,pformat
 
 
 
+class PathColorer(object):
+	def __init__(self, path, r, g, b, alpha = 200, alphaDecreaseRate = 4, alphaMinimum = 100):
+		self.path = path
+		self.color = (r, g, b)
+		self.alpha = alpha
+		self.alphaDecreaseRate = alphaDecreaseRate
+		self.alphaMinimum = alphaMinimum
+
+
 class ViewInfo(object):
 	def __init__(self, countHist, cols, rows):
 		self.lastSearched = []
@@ -26,6 +35,8 @@ class ViewInfo(object):
 		self.infoText = "(replace with whatever text here)"
 		self.cols = cols
 		self.rows = rows
+		self.paths = deque()
+		self.readyToDraw = False
 
 	
 	def turnInc(self):

@@ -9,7 +9,7 @@ import argparse
 from base import bot_base
 
 def startup(moveMethod, botName="PurdueBot"):
-
+	#raise AssertionError("stop")
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-name', metavar='str', type=str, default=os.environ.get('GENERALS_BOT_NAME', botName), help='Name of Bot')
 	parser.add_argument('-g', '--gameType', metavar='str', type=str, choices=["private","1v1","ffa","team"], default="ffa", help='Game Type: private, 1v1, or ffa')
