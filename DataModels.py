@@ -64,14 +64,29 @@ def get_player_army_amount_on_path(path, player, startIdx = 0, endIdx = 1000):
 	return value
 
 
-class GatherNode(object):
+class TreeNode(object):
 	def __init__(self, tile, fromTile, turn):
 		self.tile = tile
 		self.fromTile = fromTile
 		self.value = 0
 		self.turn = turn
+		self.gatherTurns = 0
 		self.neutrals = 0
 		self.children = []
+		self.pruned = []
+
+	def __gt__(self, other):
+		if (other == None):
+			return True
+		return self.value > other.value
+	def __lt__(self, other):
+		if (other == None):
+			return False
+		return self.value < other.value
+	def __eq__(self, other):
+		if (None == other):
+			return False
+		return self.tile == other.tile
 
 
 class Move(object):
@@ -92,3 +107,9 @@ class Move(object):
 		if (None == other):
 			return False
 		return self.source.army - self.dest.army == other.source.army - other.dest.army
+
+	def toString(self):
+		moveHalfString = ""
+		if self.move_half:
+			moveHalfString = 'z'
+		return "{},{} -{}> {},{}".format(self.source.x, self.source.y, moveHalfString, self.dest.x, self.dest.y)

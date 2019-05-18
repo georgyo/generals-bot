@@ -11,12 +11,17 @@ function run-botonce {
         [switch]$noui,
         $path = "C:\generals-bot\bot_ek0x45.py",
         $userID = $null,
-		[switch]$nolog
+		[switch]$nolog,
+		[switch]$publicLobby
     )
     $df = Get-Date -format yyyy-MM-dd_hh-mm-ss 
     $arguments = [System.Collections.ArrayList]::new()
     if ($privateGame) {
         $game = "private"
+		if ($publicLobby)
+		{
+			$game = "custom"
+		}
         [void] $arguments.Add("--roomID")
         [void] $arguments.Add($privateGame)
     }
@@ -108,6 +113,7 @@ function run-botonce {
     }
     PING 127.0.0.1 -n 1 | out-null
 	Get-ChildItem "H:\GeneralsLogs" | ? { `$_.FullName -notlike '*_chat*' } | ? { `$_.LastWriteTime -lt (get-date).AddMinutes(-30) } | Remove-Item -Force -Recurse -ErrorAction Ignore
+	Get-ChildItem "H:\GeneralsLogs\GroupedLogs" -Directory | ? { `$_.FullName -notlike '*_chat*' } | ? { `$_.LastWriteTime -lt (get-date).AddMinutes(-30) } | Remove-Item -Force -Recurse -ErrorAction Ignore
 "@
 
 	$randNums = 1..10 | Get-Random -Count 10
@@ -129,7 +135,8 @@ function Run-SoraAI {
         [switch]$public, 
         [switch]$right, 
         $privateGame, 
-        [switch]$noui
+        [switch]$noui,
+		[switch]$publicLobby
     )
 
 }
@@ -145,7 +152,8 @@ function run-bot {
         $privateGame, 
         [switch]$noui,
 		$path = "C:\generals-bot\bot_ek0x45.py",
-		[switch]$nolog
+		[switch]$nolog,
+		[switch]$publicLobby
     )
     $games = $game
     while($true)
@@ -170,7 +178,8 @@ function run-botcheckpoint {
         $privateGame, 
         [switch]$noui,
         [switch]$nocopy,
-		[switch]$nolog
+		[switch]$nolog,
+		[switch]$publicLobby
     )
     $games = $game
     if (-not $nocopy)

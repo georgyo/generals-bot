@@ -39,6 +39,7 @@ class Generals(object):
 		# 	pass
 		logging.debug("Connection created.")
 		self._gameid = None
+		self.isPrivate = False
 		self.lastChatCommand = ""
 		self.earlyLogs = []
 		self.logFile = None
@@ -67,6 +68,10 @@ class Generals(object):
 		logging.debug("Joining game, userid: " + userid)
 
 		if mode == "private":
+			self.isPrivate = True
+			mode = "custom"
+
+		if mode == "custom":
 			force_start = True
 			self._gameid = gameid # Set Game ID
 			if gameid is None:
@@ -280,9 +285,10 @@ class Generals(object):
 					
 				#self._send(["set_custom_options", self._gameid, options
 				time.sleep(0.5)
-				self._send(["make_custom_public", self._gameid])
+				if not self.isPrivate:
+					self._send(["make_custom_public", self._gameid])
 				time.sleep(0.5)
-			self._send(["set_force_start", self._gameid, True])				
+			self._send(["set_force_start", self._gameid, True])
 			logging.info("Sent force_start")
 			time.sleep(5)
 

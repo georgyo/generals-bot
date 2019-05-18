@@ -5,6 +5,7 @@
 	Map: Objects for representing Generals IO Map and Tiles
 '''
 import json
+import logging
 TILE_EMPTY = -1
 TILE_MOUNTAIN = -2
 TILE_FOG = -3
@@ -40,7 +41,12 @@ class Map(object):
 		# Start Data
 		self._start_data = start_data
 		self.player_index = start_data['playerIndex'] 									# Integer Player Index
-		self.teammate_index = -10						#TODO TEAMMATE
+		self.teammates = set()
+		if 'teams' in start_data:
+			for player, team in enumerate(start_data['teams']):
+				if team == start_data['teams'][self.player_index]:
+					self.teammates.add(player)
+		#TODO TEAMMATE
 		self.usernames = start_data['usernames'] 										# List of String Usernames
 		self.replay_url = _REPLAY_URLS["na"] + start_data['replay_id'] 					# String Replay URL # TODO: Use Client Region
 		self.players = [Player(x) for x in range(len(self.usernames))]
@@ -112,7 +118,7 @@ class Map(object):
 			player.tileCount = self.scores[player.index]['tiles']
 			player.standingArmy = self.scores[player.index]['total'] - self.scores[player.index]['tiles']
 			
-		
+
 		last = self.scoreHistory[len(self.scoreHistory) - 1]
 		earliest = last
 		for i in range(len(self.scoreHistory) - 2, 0, -1):
@@ -136,12 +142,6 @@ class Map(object):
 		self.remainingPlayers = 0
 		for i, player in enumerate(self.players):
 			if not player.dead:
-				if player.cityCount < cityCounts[i]:
-					player.cityCount = cityCounts[i]
-					player.cityGainedTurn = self.turn
-				if player.cityCount > cityCounts[i] and cityCounts[i] > 0:
-					player.cityCount = cityCounts[i]
-					player.cityLostTurn = self.turn
 				if (earliest != None):
 					player.delta25score = self.players[i].score - earliest[i]['total']
 					player.delta25tiles = self.players[i].tileCount - earliest[i]['tiles']
@@ -152,6 +152,68 @@ class Map(object):
 						player.dead = True
 				else:
 					self.remainingPlayers += 1
+		
+		if self.remainingPlayers == 2:
+			self.do_actual_good_city_calculation()
+		elif self.remainingPlayers > 2:			
+			for i, player in enumerate(self.players):
+				if not player.dead and player.index != self.player_index:
+					if player.cityCount < cityCounts[i]:
+						player.cityCount = cityCounts[i]
+						player.cityGainedTurn = self.turn
+					if player.cityCount > cityCounts[i] and cityCounts[i] > 0:
+						player.cityCount = cityCounts[i]
+						player.cityLostTurn = self.turn
+
+	def do_actual_good_city_calculation(self):
+		myPlayer = self.players[self.player_index]
+		otherPlayer = None
+		for player in self.players:
+			if not player.dead and player != myPlayer:
+				otherPlayer = player
+
+		expectCityBonus = self.turn % 2 == 0
+		expectArmyBonus = self.turn % 50 == 0
+		if expectArmyBonus or not expectCityBonus:
+			logging.info("do nothing, we can't calculate cities on a non-even turn, or on army bonus turns!")
+			return
+					#if player.cityCount < cityCounts[i]:
+					#	player.cityCount = cityCounts[i]
+					#	player.cityGainedTurn = self.turn
+					#if player.cityCount > cityCounts[i] and cityCounts[i] > 0:
+					#	player.cityCount = cityCounts[i]
+					#	player.cityLostTurn = self.turn
+		expectedPlayerDelta = 0
+		if expectCityBonus:
+			# +1 for general bonus
+			expectedPlayerDelta += myPlayer.cityCount
+
+		expectedEnemyDelta = 0
+
+		lastScores = self.scoreHistory[1]
+		if lastScores == None:
+			logging.info("no last scores?????")
+			return
+		logging.info("myPlayer score {}, lastScores myPlayer total {}".format(myPlayer.score, lastScores[myPlayer.index]['total']))
+		actualPlayerDelta = myPlayer.score - lastScores[myPlayer.index]['total']
+		logging.info("otherPlayer score {}, lastScores otherPlayer total {}".format(otherPlayer.score, lastScores[otherPlayer.index]['total']))
+		actualEnemyDelta = otherPlayer.score - lastScores[otherPlayer.index]['total']
+
+		# in a 1v1, if we lost army, then opponent also lost equal army (unless we just took a neutral tile)
+		# this means we can still calculate city counts, even when fights are ongoing and both players are losing army
+		# so we get the amount of unexpected delta on our player, and add that to actual opponent delta, and get the opponents city count
+		fightDelta = expectedPlayerDelta - actualPlayerDelta
+		realEnemyCities = actualEnemyDelta + fightDelta - expectedEnemyDelta
+		if realEnemyCities <= -40:
+			# then opp just took a neutral city
+			otherPlayer.cityCount += 1
+			logging.info("set otherPlayer cityCount += 1 to {} because it appears he just took a city.")
+		elif realEnemyCities >= 38 and actualPlayerDelta < -30:
+			# then our player just took a neutral city, noop
+			logging.info("myPlayer just took a city? ignoring realEnemyCities this turn, realEnemyCities >= 38 and actualPlayerDelta < -30")
+		else:
+			otherPlayer.cityCount = realEnemyCities
+			logging.info("set otherPlayer cityCount to {}. expectedPlayerDelta {}, actualPlayerDelta {}, expectedEnemyDelta {}, actualEnemyDelta {}, fightDelta {}, realEnemyCities {}".format(otherPlayer.cityCount, expectedPlayerDelta, actualPlayerDelta, expectedEnemyDelta, actualEnemyDelta, fightDelta, realEnemyCities))
 
 	def handle_player_capture(self, text):
 		capturer, capturee = text.split(" captured ")
@@ -208,7 +270,6 @@ class Map(object):
 			self.scoreHistory[i] = self.scoreHistory[i - 1]
 		self.scoreHistory[0] = self.scores
 		self.turn = data['turn']
-		self.updatePlayerInformation()
 
 		armyMovedGrid = [[bool for x in range(self.cols)] for y in range(self.rows)]
 		#if (self.turn % 50 == 0):
@@ -229,11 +290,12 @@ class Map(object):
 				isGeneral = (y,x) in self._visible_generals
 				
 				armyMovedGrid[y][x] = self.grid[y][x].update(self, tile_type, army_count, isCity, isGeneral)
-		
-		for x in range(self.cols): # Make assumptions about unseen tiles
+
+		# Make assumptions about unseen tiles
+		for x in range(self.cols): 
 			for y in range(self.rows):
 				curTile = self.grid[y][x]
-				if (curTile.isCity and curTile.player >= 0):
+				if (curTile.isCity and curTile.player != -1):
 					self.players[curTile.player].cities.append(curTile)
 				if (armyMovedGrid[y][x]):					
 					#look for candidate tiles that army may have come from
@@ -278,7 +340,9 @@ class Map(object):
 				if curTile.player >= 0:
 					self.players[curTile.player].tiles.append(curTile)
 					
-
+		# we know our players city count + his general because we can see all our own cities
+		self.players[self.player_index].cityCount = len(self.players[self.player_index].cities) + 1
+		self.updatePlayerInformation()
 		return self
 
 	def updateResult(self, result):
@@ -430,9 +494,16 @@ class Tile(object):
 
 	'''def __eq__(self, other):
 			return (other != None and self.x==other.x and self.y==other.y)'''
-
+			
 	def __lt__(self, other):
-			return self.army < other.army
+		if other == None:
+			return False
+		return self.army < other.army
+
+	def __gt__(self, other):
+		if other == None:
+			return True
+		return self.army > other.army
 	
 	def tileToString(self, tile):
 		if (tile == TILE_EMPTY):
@@ -445,6 +516,9 @@ class Tile(object):
 			return "Obstacle"
 		return "Player " + str(tile)
 	
+	
+	def toString(self):
+		return "{},{}".format(self.x, self.y)	
 	
 	
 	def isvisible(self):
@@ -487,7 +561,7 @@ class Tile(object):
 				self.lastSeen = map.turn - 1
 				self.visible = False
 				
-				if (self.player == map.player_index or self.player == map.teammate_index): 
+				if (self.player == map.player_index or self.player in map.teammates): 
 					# we lost the tile
 					# TODO Who might have captured it? for now set to unowned.
 					self.delta.friendlyCaptured = True

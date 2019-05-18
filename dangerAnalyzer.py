@@ -32,6 +32,10 @@ class ThreatObj(object):
 		self.saveTile = saveTile
 
 
+
+
+
+
 class DangerAnalyzer(object):
 	def __init__(self, map):
 		self.map = map
@@ -86,13 +90,12 @@ class DangerAnalyzer(object):
 		curThreat = None
 		saveTile = None
 		for player in self.map.players:
-			if not player.dead and (player.index != general.player) and len(self.playerTiles[player.index]) > 0 and self.map.players[player.index].tileCount > 10:
+			if not player.dead and (player.index != general.player) and player.index not in self.map.teammates and len(self.playerTiles[player.index]) > 0 and self.map.players[player.index].tileCount > 10:
 				path = dest_breadth_first_target(self.map, [general], -1, 0.05, depth, None, player.index, False, 6)
 				if path != None and (curThreat == None or path.length < curThreat.length or (path.length == curThreat.length and path.value > curThreat.value)):
 					#self.viewInfo.addSearched(path[1].tile)
 					#logging.info("DangerAnalyzer path bug! tail {}! Path {}".format(path.tail.toString(), path.toString()))
 					lastTile = path.tail.prev.tile
-					#logging.info("REEEEEEEEE\nree\nREEEEEEEEEEEEEEEEE\nreeeee\nlastTile: {},{}".format(lastTile.x, lastTile.y))
 					altPath = dest_breadth_first_target(self.map, [general], -1, 0.05, path.length + 5, None, player.index, False, 6, skipTiles = [lastTile])
 					if altPath == None or altPath.length > path.length:
 						saveTile = lastTile
@@ -116,5 +119,5 @@ class DangerAnalyzer(object):
 				tile = self.map.grid[y][x]
 				if (tile.player != -1):
 					self.playerTiles[tile.player].append(tile)
-					if(tile.player != general.player and tile.army > max(2, general.army / 4) and tile.isvisible() and not tile.isGeneral):
+					if(tile.player not in self.map.teammates and tile.player != general.player and tile.army > max(2, general.army / 4) and tile.isvisible() and not tile.isGeneral):
 						self.largeVisibleEnemyTiles.append(tile)

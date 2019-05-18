@@ -44,7 +44,7 @@ CELL_WIDTH = 32
 CELL_HEIGHT = 30
 CELL_MARGIN = 1
 SCORES_ROW_HEIGHT = 33
-INFO_ROW_HEIGHT = 25
+INFO_ROW_HEIGHT = 35
 PLUS_DEPTH = 9
 
 
@@ -70,6 +70,20 @@ class GeneralsViewer(object):
 			self._collect_path = [(path.x, path.y) for path in update.collect_path]
 		else:
 			self._collect_path = None
+
+	def get_line_arrow(self, r, g, b):
+		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
+		# first, "erase" the surface by filling it with a color and
+		# setting this color as colorkey, so the surface is empty
+		s.fill(WHITE)
+		s.set_colorkey(WHITE)
+		pygame.draw.line(s, (r, g, b), (CELL_WIDTH / 2, 0), (CELL_WIDTH / 2, CELL_HEIGHT), 2)
+		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, 0), (CELL_WIDTH / 2, CELL_HEIGHT), 1)
+		pygame.draw.line(s, (r, g, b), (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 3 / 8, CELL_HEIGHT * 5 / 8), 2)
+		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 3 / 8, CELL_HEIGHT * 5 / 8), 1)
+		pygame.draw.line(s, (r, g, b), (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 5 / 8 - 1, CELL_HEIGHT * 5 / 8), 2)
+		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 5 / 8, CELL_HEIGHT * 5 / 8), 1)
+		return s
 
 	def _initViewier(self, position):
 		os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % position
@@ -99,18 +113,7 @@ class GeneralsViewer(object):
 		self.Arrow = [(CELL_WIDTH / 2, 0), (CELL_WIDTH / 8, CELL_HEIGHT / 2), (CELL_WIDTH / 2, CELL_HEIGHT / 4), (7 * CELL_WIDTH / 8, CELL_HEIGHT / 2)]
 		# self.Arrow = [(CELL_WIDTH / 2, 0), (CELL_WIDTH / 8, CELL_HEIGHT / 2), (CELL_WIDTH / 2, CELL_HEIGHT / 4), (7 * CELL_WIDTH / 8, CELL_HEIGHT / 2)]
 		
-		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
-		# first, "erase" the surface by filling it with a color and
-		# setting this color as colorkey, so the surface is empty
-		s.fill(WHITE)
-		s.set_colorkey(WHITE)
-		pygame.draw.line(s, BLACK, (CELL_WIDTH / 2, 0), (CELL_WIDTH / 2, CELL_HEIGHT), 2)
-		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, 0), (CELL_WIDTH / 2, CELL_HEIGHT), 1)
-		pygame.draw.line(s, BLACK, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 3 / 8, CELL_HEIGHT * 5 / 8), 2)
-		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 3 / 8, CELL_HEIGHT * 5 / 8), 1)
-		pygame.draw.line(s, BLACK, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 5 / 8 - 1, CELL_HEIGHT * 5 / 8), 2)
-		# pygame.draw.line(s, WHITE, (CELL_WIDTH / 2, CELL_HEIGHT), (CELL_WIDTH * 5 / 8, CELL_HEIGHT * 5 / 8), 1)
-		self.lineArrow = s
+		self.lineArrow = self.get_line_arrow(0,0,0)
 		self.repId = self._map.replay_url.split("/").pop()
 		fileSafeUserName = self._map.usernames[self._map.player_index]
 		fileSafeUserName = fileSafeUserName.replace("[Bot] ", "")
@@ -168,8 +171,11 @@ class GeneralsViewer(object):
 				allInText = "+"
 
 			# Draw Bottom Info Text
-			self._screen.blit(self._fontLrg.render("Turn: %d, %s%s" % (self._map.turn, allInText, self._map.ekBot.all_in_counter), True, WHITE), (10, self._window_size[1] - INFO_ROW_HEIGHT))
-			self._screen.blit(self._font.render(self._map.ekBot.viewInfo.infoText, True, WHITE), (200, self._window_size[1] - INFO_ROW_HEIGHT))
+			self._screen.blit(self._fontLrg.render("Turn: {}, {}{}".format(self._map.turn, allInText, self._map.ekBot.all_in_counter), True, WHITE), (10, self._window_size[1] - INFO_ROW_HEIGHT + 4))
+			self._screen.blit(self._font.render(self._map.ekBot.viewInfo.infoText, True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT))
+			if self._map.ekBot.timings:
+				timings = self._map.ekBot.timings
+				self._screen.blit(self._font.render("Timings: {} ({})".format(timings.toString(), (self._map.turn + timings.offsetTurns) % timings.cycleTurns), True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT + 15))
 		
 			# Draw Scores
 			pos_top = self._window_size[1] - INFO_ROW_HEIGHT - SCORES_ROW_HEIGHT
@@ -445,6 +451,14 @@ class GeneralsViewer(object):
 								textVal = "x"		
 							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + CELL_WIDTH / 3, pos_top + 2 * CELL_HEIGHT / 3))
 							
+					if (self._map.ekBot.viewInfo.bottomRightGridText != None):
+						text = self._map.ekBot.viewInfo.bottomRightGridText[column][row]
+						if (text != None):
+							textVal = "{0:.0f}".format(text)
+							if (text == -1000000): #then was skipped
+								textVal = "x"		
+							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
+							
 			#print("replay {} turn {}".format(self.repId, self._map.turn))
 			# Limit to 60 frames per second
 			self._clock.tick(60)
@@ -506,14 +520,21 @@ class GeneralsViewer(object):
 
 
 	def drawGathers(self):
+		pruneArrow = self.get_line_arrow(190, 30, 0)
 		if (self._map.ekBot.gatherNodes != None):
 			q = deque()
 			for node in self._map.ekBot.gatherNodes:
-				q.appendleft(node)
+				q.appendleft((node, True))
 			while (len(q) > 0):
-				node = q.pop()
+				node, unpruned = q.pop()
 				for child in node.children:
-					q.appendleft(child)
+					q.appendleft((child, unpruned))
+				for prunedChild in node.pruned:
+					q.appendleft((child, False))
+
+				arrowToUse = self.lineArrow
+				if not unpruned:
+					arrowToUse = pruneArrow
 				if node.fromTile != None:
 					xDiff = node.tile.x - node.fromTile.x
 					yDiff = node.tile.y - node.fromTile.y
@@ -521,22 +542,22 @@ class GeneralsViewer(object):
 					if (xDiff > 0):
 						pos_left = (CELL_MARGIN + CELL_WIDTH) * node.fromTile.x + CELL_MARGIN + CELL_WIDTH / 2
 						pos_top = (CELL_MARGIN + CELL_HEIGHT) * node.fromTile.y + CELL_MARGIN
-						s = pygame.transform.rotate(self.lineArrow, -90)
+						s = pygame.transform.rotate(arrowToUse, -90)
 						self._screen.blit(s, (pos_left, pos_top))
 					if (xDiff < 0):
 						pos_left = (CELL_MARGIN + CELL_WIDTH) * node.fromTile.x + CELL_MARGIN - CELL_WIDTH / 2
 						pos_top = (CELL_MARGIN + CELL_HEIGHT) * node.fromTile.y + CELL_MARGIN
-						s = pygame.transform.rotate(self.lineArrow, 90)
+						s = pygame.transform.rotate(arrowToUse, 90)
 						self._screen.blit(s, (pos_left, pos_top))
 					if (yDiff > 0):
 						pos_left = (CELL_MARGIN + CELL_WIDTH) * node.fromTile.x + CELL_MARGIN
 						pos_top = (CELL_MARGIN + CELL_HEIGHT) * node.fromTile.y + CELL_MARGIN + CELL_HEIGHT / 2
-						s = pygame.transform.rotate(self.lineArrow, 180)
+						s = pygame.transform.rotate(arrowToUse, 180)
 						self._screen.blit(s, (pos_left, pos_top))
 					if (yDiff < 0):
 						pos_left = (CELL_MARGIN + CELL_WIDTH) * node.fromTile.x + CELL_MARGIN
 						pos_top = (CELL_MARGIN + CELL_HEIGHT) * node.fromTile.y + CELL_MARGIN - CELL_HEIGHT / 2
-						s = self.lineArrow
+						s = arrowToUse
 						self._screen.blit(s, (pos_left, pos_top))
 
 

@@ -12,7 +12,7 @@ def startup(moveMethod, botName="PurdueBot"):
 	#raise AssertionError("stop")
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-name', metavar='str', type=str, default=os.environ.get('GENERALS_BOT_NAME', botName), help='Name of Bot')
-	parser.add_argument('-g', '--gameType', metavar='str', type=str, choices=["private","1v1","ffa","team"], default="ffa", help='Game Type: private, 1v1, or ffa')
+	parser.add_argument('-g', '--gameType', metavar='str', type=str, choices=["private","custom","1v1","ffa","team"], default="ffa", help='Game Type: private, custom, 1v1, ffa, or team')
 	#parser.add_argument('--roomID', metavar='str', type=str, default="EklipZ_ai", help='Private Room ID (optional)')
 	parser.add_argument('--roomID', metavar='str', type=str, help='Private Room ID (optional)')
 	parser.add_argument('--right', action='store_true')

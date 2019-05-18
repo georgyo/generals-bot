@@ -10,6 +10,7 @@ from copy import deepcopy
 import time
 import json
 import math
+from DataModels import TreeNode
 from collections import deque 
 from queue import PriorityQueue
 from pprint import pprint,pformat
@@ -51,9 +52,8 @@ class Path(object):
 	def __init__(self, value = 0):
 		self.start = None
 		self._pathQueue = deque()
-		self._pathSet = None
 		self.tail = None
-		self._tileSet = None
+		self._tileList = None
 		self.value = value
 	def __gt__(self, other):
 		if (other == None):
@@ -70,16 +70,20 @@ class Path(object):
 
 	@property
 	def tileSet(self):
-		if self._tileSet == None:
-			self._tileSet = set()
-			node = self.start
-			while node != None:
-				self._tileSet.add(node.tile)
-				node = node.next
-		return self._tileSet
+		return set(self.tileList)
 	@tileSet.setter
 	def tileSet(self, value):
 		raise AssertionError("NO SETTING!")
+
+	@property
+	def tileList(self):
+		if self._tileList == None:
+			self._tileList = list()
+			node = self.start
+			while node != None:
+				self._tileList.append(node.tile)
+				node = node.next
+		return list(self._tileList)
 
 	def add_next(self, nextTile):
 		move = PathMove(nextTile)
@@ -88,8 +92,8 @@ class Path(object):
 			self.start = move
 		if self.tail != None:
 			self.tail.next = move
-		if self._tileSet != None:
-			self._tileSet.add(nextTile)
+		if self._tileList != None:
+			self._tileList.append(nextTile)
 		self.tail = move
 		self._pathQueue.append(move)
 
@@ -99,16 +103,16 @@ class Path(object):
 			move.next = self.start
 			self.start.prev = move
 		self.start = move
-		if self._tileSet != None:
-			self._tileSet.add(startTile)
+		if self._tileList != None:
+			self._tileList.insert(0, startTile)
 		self._pathQueue.appendleft(move)
 
 	def made_move(self):
 		if len(self._pathQueue) == 0:
 			logging.info(", bitch? Why you tryin to made_move when there aint no moves to made?")
 			return
-		if self._tileSet != None:
-			self._tileSet.remove(self.start.tile)
+		if self._tileList != None:
+			self._tileList.remove(self.start.tile)
 		self.start = self.start.next
 		return self._pathQueue.popleft()
 
@@ -116,13 +120,23 @@ class Path(object):
 		if len(self._pathQueue) == 0:
 			logging.info(", bitch? Removing nothing??")
 			return
-		if self._tileSet != None:
-			self._tileSet.remove(self.tail.tile)
+		if self._tileList != None:
+			self._tileList.remove(self.tail.tile)
 		move = self._pathQueue.pop()
 		self.tail = self.tail.prev
 		if self.tail != None:
 			self.tail.next = None
-		return move
+		return move	
+	
+	def convert_to_dist_dict(self):
+		dist = 0
+		dict = {}
+		node = self.start
+		while node != None:
+			dict[node.tile] = dist
+			node = node.next
+			dist += 1
+		return dict
 
 	def calculate_value(self, forPlayer):
 		val = 0
@@ -160,7 +174,7 @@ class Path(object):
 		while temp != None:
 			newPath.add_next(temp.tile)
 			temp = temp.prev
-
+		newPath.value = self.value
 		return newPath
 	
 	# 10 things, want 3 end
@@ -183,6 +197,20 @@ class Path(object):
 			val = val + str(node.tile.x) + "," + str(node.tile.y) + " "
 			node = node.next
 		return val
+
+	def convert_to_tree_nodes(self):
+		curTreeNode = None
+		curPathNode = self.start
+		prevPathTile = None
+		turn = 0
+		while curPathNode != None:
+			prevTreeNode = curTreeNode
+			curTreeNode = TreeNode(curPathNode.tile, prevPathTile, turn)
+			curTreeNode.children.append(prevTreeNode)
+			turn += 1
+			prevPathTile = curPathNode.tile
+			curPathNode = curPathNode.next
+		return curTreeNode
 
 	
 		

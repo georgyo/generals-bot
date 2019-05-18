@@ -49,6 +49,7 @@
   <ItemGroup>
     <Folder Include="base" />
     <Folder Include="base\client" />
+    <Folder Include="Directives\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="{a9696fd6-96ad-422b-9dcc-c0571433ed61}\3.5" />

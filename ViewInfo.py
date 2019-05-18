@@ -37,9 +37,11 @@ class ViewInfo(object):
 		self.rows = rows
 		self.paths = deque()
 		self.readyToDraw = False
+		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 
 	
 	def turnInc(self):
+		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		countHist = len(self.searchHistory)
 		for i in range(countHist):
 			if (i == countHist - 2):
