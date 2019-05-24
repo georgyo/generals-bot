@@ -38,6 +38,7 @@ class ViewInfo(object):
 		self.paths = deque()
 		self.readyToDraw = False
 		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
+		self.lastMoveDuration = 0.0
 
 	
 	def turnInc(self):

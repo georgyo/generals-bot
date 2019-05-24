@@ -36,6 +36,7 @@ class Player(object):
 		self.capturedBy = None
 		self.knowsKingLocation = False
 
+
 class Map(object):
 	def __init__(self, start_data, data):
 		# Start Data
@@ -51,6 +52,12 @@ class Map(object):
 		self.replay_url = _REPLAY_URLS["na"] + start_data['replay_id'] 					# String Replay URL # TODO: Use Client Region
 		self.players = [Player(x) for x in range(len(self.usernames))]
 		self.ekBot = None
+		self.reachableTiles = []
+		self.notify_tile_captures = []
+		self.notify_tile_deltas = []
+		self.notify_city_found = []
+		self.notify_tile_discovered = []
+		self.notify_tile_revealed = []
 		
 		# First Game Data
 		self._applyUpdateDiff(data)
@@ -233,6 +240,8 @@ class Map(object):
 			if (capturedGen != None):
 				capturedGen.isGeneral = False
 				capturedGen.isCity = True
+				for eventHandler in self.notify_city_found:
+					eventHandler(capturedGen)
 			self.generals[captureeIdx] = None
 			capturingPlayer = self.players[capturerIdx]
 			for x in range(self.cols):
@@ -242,8 +251,13 @@ class Map(object):
 						tile.discoveredAsNeutral = True
 						tile.player = capturerIdx
 						tile.army = tile.army // 2
+						for eventHandler in self.notify_tile_deltas:
+							eventHandler(tile)
+						
 						if (tile.isCity and not tile in capturingPlayer.cities):
 							capturingPlayer.cities.append(tile)
+						for eventHandler in self.notify_tile_captures:
+							eventHandler(tile)
 						
 				
 
@@ -288,9 +302,31 @@ class Map(object):
 				army_count = self._army_grid[y][x]
 				isCity = (y,x) in self._visible_cities
 				isGeneral = (y,x) in self._visible_generals
-				
-				armyMovedGrid[y][x] = self.grid[y][x].update(self, tile_type, army_count, isCity, isGeneral)
+				curTile = self.grid[y][x]
+				wasCity = curTile.isCity
+				wasVisible = curTile.visible
+				wasDiscovered = curTile.discovered
+				armyMovedGrid[y][x] = curTile.update(self, tile_type, army_count, isCity, isGeneral)
+				if curTile.delta.oldOwner != curTile.delta.newOwner:
+					for eventHandler in self.notify_tile_captures:
+						eventHandler(curTile)
+					for eventHandler in self.notify_tile_deltas:
+						eventHandler(curTile)
+				if curTile.delta.armyDelta != 0:
+					for eventHandler in self.notify_tile_deltas:
+						eventHandler(curTile)
+				if wasCity != curTile.isCity:
+					for eventHandler in self.notify_city_found:
+						eventHandler(curTile)
+				if wasDiscovered != curTile.discovered:
+					for eventHandler in self.notify_tile_discovered:
+						eventHandler(curTile)
+				if wasVisible != curTile.visible:
+					for eventHandler in self.notify_tile_revealed:
+						eventHandler(curTile)
 
+
+					
 		# Make assumptions about unseen tiles
 		for x in range(self.cols): 
 			for y in range(self.rows):
@@ -528,7 +564,7 @@ class Tile(object):
 		return self.mountain
 
 	def isobstacle(self):
-		return (self.mountain or self.tile == TILE_OBSTACLE) and not self.isCity
+		return (self.mountain or (not self.discovered and self.tile == TILE_OBSTACLE))
 	
 
 	def update(self, map, tile, army, isCity=False, isGeneral=False):
@@ -575,7 +611,7 @@ class Tile(object):
 			self.tile = tile
 		
 		self.delta.newOwner = self.player
-				
+		
 			
 		
 		if ((army == 0 and self.isvisible()) or army > 0 and self.army != army): # Remember Discovered Armies

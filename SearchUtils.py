@@ -17,6 +17,21 @@ from Path import Path, PathMove
 from test.test_float import INF
 from ViewInfo import ViewInfo, PathColorer
 
+
+
+
+
+class Counter(object):
+	def __init__(self, value):
+		self.value = value
+
+	def add(self, value):
+		self.value = self.value + value
+		
+def new_map_matrix(map, initialValueFunc):
+	return [[initialValueFunc(x,y) for x in range(map.rows)] for y in range(map.cols)]
+	
+
 def where(list, filter):
 	results = []
 	for item in list:
@@ -38,7 +53,7 @@ def count(list, filter):
 	return count
 
 
-def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, negativeTiles = None, searchingPlayer = -2, dontEvacCities = False, dupeThreshold = 6, noNeutralCities = True, skipTiles = None, ignoreGoalArmy = False):
+def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, negativeTiles = None, searchingPlayer = -2, dontEvacCities = False, dupeThreshold = 6, noNeutralCities = True, skipTiles = None, ignoreGoalArmy = False, noLog = False):
 	'''
 	GoalList can be a dict that maps from start tile to (startDist, goalTargetArmy)
 	'''
@@ -142,8 +157,8 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 				if newDist not in visited[next.x][next.y] or visited[next.x][next.y][newDist][0] < nextArmy:
 					visited[next.x][next.y][newDist] = (nextArmy, current)
 				frontier.put(((newDist, 0 - nextArmy), next, newDist, nextArmy, newVisitedSet, goalInc))
-
-	logging.info("BFS DEST SEARCH ITERATIONS {}, DURATION: {}, DEPTH: {}, FOUNDDIST: {}".format(iter, time.time() - start, depthEvaluated, foundDist))
+	if not noLog:
+		logging.info("BFS DEST SEARCH ITERATIONS {}, DURATION: {}, DEPTH: {}, FOUNDDIST: {}".format(iter, time.time() - start, depthEvaluated, foundDist))
 	if foundDist < 0:
 		return None
 		
@@ -490,9 +505,9 @@ def breadth_first_dynamic(map, startTiles, goalFunc, maxTime = 0.2, maxDepth = 1
 
 
 def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc = None, baseCaseFunc = None,
-					   negativeTiles = None, 
-					   skipTiles = None, 
-					   searchingPlayer = -2, 
+					   negativeTiles = None,
+					   skipTiles = None,
+					   searchingPlayer = -2,
 					   priorityFunc = None,
 					   skipFunc = None,
 					   ignoreStartTile = False,
@@ -504,6 +519,8 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	valueFunc is (currentTile, priorityObject) -> POSITIVELY weighted value object
 	priorityFunc is (nextTile, currentPriorityobject) -> nextPriorityObject NEGATIVELY weighted
 	'''
+	# because something?
+	turns += 1
 	startTime = time.time()
 	if negativeTiles != None:
 		negativeTiles = negativeTiles.copy()
@@ -527,7 +544,6 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	# TODO factor in cities, right now they're not even incrementing. need to factor them into the timing and calculate when they'll be moved.
 	if searchingPlayer == -2:
 		searchingPlayer = startTiles.keys()[0].player
-
 
 
 	logging.info("Trying greedy-bfs-gather. Turns {}. Searching player {}".format(turns, searchingPlayer))
@@ -676,25 +692,34 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	logging.info("Concluded greedy-bfs-gather built from {} path segments. Duration: {:.2f}".format(itr, time.time() - startTime))
 	return list(where(treeNodeLookup.values(), lambda treeNode: treeNode.fromTile == None))
 
-def get_tree_move(gathers, priorityFunc):
+def get_tree_move(gathers, priorityFunc, valueFunc):
+	if len(gathers) == 0:
+		logging.info("get_tree_move... len(gathers) == 0?")
+		return None
 	q = PriorityQueue()
 
 	for gather in gathers:
 		basePrio = priorityFunc(gather.tile, None)
 		q.put((basePrio, gather))
 
-	# the first leaf we pop off is the one we use because of priority.
+	highestValue = None
+	highestValueMove = None
 	while q.qsize() > 0:
 		(curPrio, curGather) = q.get()
 		if len(curGather.children) == 0:
 			# WE FOUND OUR FIRST MOVE!
-			move = Move(curGather.tile, curGather.fromTile)
-			logging.info("get_tree_move returned {}!".format(move.toString()))
-			return move
+			thisValue = valueFunc(curGather.tile, curPrio)
+			if highestValue == None or thisValue > highestValue:
+				highestValue = thisValue
+				highestValueMove = Move(curGather.tile, curGather.fromTile)
+				logging.info("new highestValueMove {}!".format(highestValueMove.toString()))
 		for gather in curGather.children:
 			nextPrio = priorityFunc(gather.tile, curPrio)
 			q.put((nextPrio, gather))
-	logging.info("Whoah, no move popped???")
+	if highestValueMove == None:
+		raise AssertionError("No highestValueMove found?")
+	logging.info("highestValueMove in get_tree_move was {}!".format(highestValueMove.toString()))
+	return highestValueMove
 
 
 def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDepth = 100, 
@@ -1046,15 +1071,6 @@ def bidirectional_breadth_first_dynamic(map, startTiles, goalFunc, maxTime = 0.2
 	logging.info("DYNAMIC BFS FOUND PATH LENGTH {} VALUE {}\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
 	return pathObject
 
-
-
-
-class Counter(object):
-	def __init__(self, value):
-		self.value = value
-
-	def add(self, value):
-		self.value = self.value + value
 
 
 def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth = 20, 

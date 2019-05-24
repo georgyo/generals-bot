@@ -9,6 +9,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Stupid vs stuff
+*.suo
+
 # Distribution / packaging
 .Python
 env/

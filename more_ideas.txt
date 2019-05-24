@@ -1,0 +1,27 @@
+Expansion ideas
+
+
+
+ACTUALLY BACKPACK EXPANSION!
+	- Limit expansion to logical territory.
+		- find all territory on the shortest path between my territory and theirs?
+Fix worth attacking and subsegment
+	- switch off of always using general path? Switch to max path instead and gather to that?
+	- maybe switch to gather attacks?
+
+
+
+
+Spraget said i'm retarded and to use 2 tiles first on round 2 before attacking. Duh.
+
+Plan expansion path with largest tile,
+then next largest tile(s) not included in above path,
+then next, and so on until no tiles remain or time is used up.
+
+
+When gathering to tiles in our territory, first do an expansion from it and see the max amount of army used before repeatedly traversing over shitty territory, and don't gather more army than that.
+
+
+
+
+

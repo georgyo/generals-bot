@@ -20,13 +20,13 @@ UNDISCOVERED_GRAY = (110,110,110)
 GRAY = (160,160,160)
 WHITE = (255,255,255)
 RED = (200,40,40)
-P_RED = (235,55,40)
+P_RED = (245,65,50)
 P_BLUE = (30,30,230)
-P_GREEN = (70,130,30)
+P_GREEN = (50,150,20)
 P_PURPLE = (128,30,128)
 P_TEAL = (30,128,128)
-P_DARK_GREEN = (20,90,50)
-P_DARK_RED = (128,10,40)
+P_DARK_GREEN = (10,70,30)
+P_DARK_RED = (100,5,35)
 P_YELLOW = (170,140,20)
 P_BRIGHT_GREEN = (10,20,10)
 #P_BRIGHT_GREEN = (10,225,90)
@@ -104,7 +104,7 @@ class GeneralsViewer(object):
 		pygame.display.set_caption(window_title)
 		self._font = pygame.font.SysFont('Arial', int(CELL_HEIGHT / 2) - 2)
 		self._fontSmall = pygame.font.SysFont('Arial', int(CELL_HEIGHT / 3))
-		self._fontLrg = pygame.font.SysFont('Arial', CELL_HEIGHT - 5) 
+		self._fontLrg = pygame.font.SysFont('Arial', CELL_HEIGHT - 7) 
 		self._bottomText = ""
 
 		self._clock = pygame.time.Clock()
@@ -171,11 +171,11 @@ class GeneralsViewer(object):
 				allInText = "+"
 
 			# Draw Bottom Info Text
-			self._screen.blit(self._fontLrg.render("Turn: {}, {}{}".format(self._map.turn, allInText, self._map.ekBot.all_in_counter), True, WHITE), (10, self._window_size[1] - INFO_ROW_HEIGHT + 4))
+			self._screen.blit(self._fontLrg.render("Turn: {}, ({})".format(self._map.turn, ("%.2f" % self._map.ekBot.viewInfo.lastMoveDuration).lstrip('0')), True, WHITE), (10, self._window_size[1] - INFO_ROW_HEIGHT + 4))
 			self._screen.blit(self._font.render(self._map.ekBot.viewInfo.infoText, True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT))
 			if self._map.ekBot.timings:
 				timings = self._map.ekBot.timings
-				self._screen.blit(self._font.render("Timings: {} ({})".format(timings.toString(), (self._map.turn + timings.offsetTurns) % timings.cycleTurns), True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT + 15))
+				self._screen.blit(self._font.render("Timings: {} ({})   - {}{}".format(timings.toString(), (self._map.turn + timings.offsetTurns) % timings.cycleTurns, allInText, self._map.ekBot.all_in_counter), True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT + 15))
 		
 			# Draw Scores
 			pos_top = self._window_size[1] - INFO_ROW_HEIGHT - SCORES_ROW_HEIGHT
@@ -192,6 +192,8 @@ class GeneralsViewer(object):
 						if (player.dead):
 							score_color = GRAY_DARK
 						pygame.draw.rect(self._screen, score_color, [score_width * i, pos_top, score_width, SCORES_ROW_HEIGHT])
+						if (self._map.ekBot.targetPlayer == player.index):
+							pygame.draw.rect(self._screen, GRAY, [score_width * i, pos_top, score_width, SCORES_ROW_HEIGHT], 1)
 						userName = self._map.usernames[player.index]
 						userString = "{} ({})".format(userName, player.stars)
 						try:
@@ -224,6 +226,7 @@ class GeneralsViewer(object):
 					# Determine BG Color
 					color = WHITE
 					color_font = WHITE
+
 					if tile.ismountain(): # Mountain
 						color = BLACK
 					elif tile.player >= 0:
@@ -256,6 +259,9 @@ class GeneralsViewer(object):
 
 					pos_left = (CELL_MARGIN + CELL_WIDTH) * column + CELL_MARGIN
 					pos_top = (CELL_MARGIN + CELL_HEIGHT) * row + CELL_MARGIN
+					
+	
+
 					if (tile in self._map.generals): # General
 						# Draw Plus
 						pygame.draw.rect(self._screen, color, [pos_left + PLUS_DEPTH, pos_top, CELL_WIDTH - PLUS_DEPTH * 2, CELL_HEIGHT])
@@ -270,10 +276,18 @@ class GeneralsViewer(object):
 						# Draw Rect
 						pygame.draw.rect(self._screen, color, [pos_left, pos_top, CELL_WIDTH, CELL_HEIGHT])
 
+					# mark tile territories
+					territoryMarkerSize = 5
+					tileTerritoryPlayer = self._map.ekBot.territories.territoryMap[tile.x][tile.y]
+					if tile.player != tileTerritoryPlayer:
+						territoryColor = None
+						if tileTerritoryPlayer != -1:
+							territoryColor = PLAYER_COLORS[tileTerritoryPlayer]
+							pygame.draw.rect(self._screen, territoryColor, [pos_left + CELL_WIDTH - territoryMarkerSize, pos_top, territoryMarkerSize, territoryMarkerSize])
+
+
 
 			# Draw path
-			#print("drawing path")
-				
 			self.drawGathers()
 			
 			while len(self._map.ekBot.viewInfo.paths) > 0:
@@ -403,7 +417,7 @@ class GeneralsViewer(object):
 						playercolor = PLAYER_COLORS[tile.player]
 						colorR = playercolor[0]
 						colorG = playercolor[1]
-						colorB = playercolor[2]				
+						colorB = playercolor[2]
 						if (tile.isCity or tile.isGeneral):
 							colorR = colorR + KING_COLOR_OFFSET if colorR <= 255 - KING_COLOR_OFFSET else 255
 							colorG = colorG + KING_COLOR_OFFSET if colorG <= 255 - KING_COLOR_OFFSET else 255

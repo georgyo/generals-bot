@@ -215,6 +215,7 @@ class Generals(object):
 							logging.info("!!!!!!!!!!\n!!!!!!!!!!!!!\n!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!\ncouldn't write unknown message to file")
 			elif msg[0] == "error_user_id":
 				logging.info("error_user_id, Already in game???")
+				time.sleep(20)
 				raise ValueError("Already in game")
 			elif msg[0] == "server_down":
 				logging.info("server_down, Server is down???")
@@ -224,6 +225,11 @@ class Generals(object):
 				raise ValueError("Server is restarting")
 			elif msg[0] == "error_set_username":
 				logging.info("error_set_username, ???")
+				None
+			elif msg[0] == "error_banned":
+				logging.info("TOO MANY CONNECTION ATTEMPTS :( sleeping and then trying again")
+				time.sleep(random.choice(range(45)) + 5)
+				self._terminate()
 				None
 			else:
 				logging.info("Unknown message type: {}".format(msg))

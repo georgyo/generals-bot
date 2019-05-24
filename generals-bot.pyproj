@@ -38,8 +38,12 @@
     <Compile Include="bot_blob.py" />
     <Compile Include="bot_path_collect.py" />
     <Compile Include="DataModels.py" />
-    <Compile Include="Directives.py" />
+    <Compile Include="Directives\BasicPath.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Directives\Directives.py" />
     <Compile Include="Path.py" />
+    <Compile Include="Territory.py" />
     <Compile Include="SearchUtils.py" />
     <Compile Include="ViewInfo.py" />
     <Compile Include="dangerAnalyzer.py" />

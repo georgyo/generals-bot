@@ -8,7 +8,7 @@
 import logging
 from enum import Enum
 
-class Timings(object):
+class Timings():
 	def __init__(self, cycleTurns, splitTurns, offsetTurns):
 		self.cycleTurns = cycleTurns
 		self.splitTurns = splitTurns
@@ -25,8 +25,20 @@ class Timings(object):
 		return "cycle {}, split {}, offset {}".format(self.cycleTurns, self.splitTurns, self.offsetTurns)
 
 
-class Directive(object):
-	def __init__(self):
-		self.type = None
+class Directive():
+	def __init__(self, type = None):
+		self.type = type
 
-#class Explorer(object):
+	# Return some number to indicate how important this move is. -1 or lower will not be made.
+	# This doesn't necessarily need to calculate a full move etc, and should be performant.
+	def get_priority(self):
+		return -1
+
+	# Returns the move to be made.
+	def get_move(self):
+		return None
+
+	# Doesn't necessarily need to recalculate if the directive is cycle-based etc.
+	def recalculate(self, turn):
+		return
+
