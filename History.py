@@ -17,6 +17,7 @@ class History(object):
 		self.aggressive_enemy_moves = []
 		self.move_history = {}
 		self.player_captures = []
+		self.attempted_threat_kills = set()
 
 	def add_city_contestation(self, city, turn, player, army):
 		if city not in self.contested_cities:

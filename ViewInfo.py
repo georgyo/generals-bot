@@ -16,7 +16,7 @@ from pprint import pprint,pformat
 
 
 class PathColorer(object):
-	def __init__(self, path, r, g, b, alpha = 200, alphaDecreaseRate = 4, alphaMinimum = 100):
+	def __init__(self, path, r, g, b, alpha = 255, alphaDecreaseRate = 10, alphaMinimum = 100):
 		self.path = path
 		self.color = (r, g, b)
 		self.alpha = alpha
@@ -38,11 +38,13 @@ class ViewInfo(object):
 		self.paths = deque()
 		self.readyToDraw = False
 		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
+		self.bottomLeftGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		self.lastMoveDuration = 0.0
 
 	
 	def turnInc(self):
 		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
+		self.bottomLeftGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		countHist = len(self.searchHistory)
 		for i in range(countHist):
 			if (i == countHist - 2):

@@ -1,7 +1,7 @@
 ﻿
 
 
-function run-botonce { 
+function Run-BotOnce { 
     Param(
         $name, 
         $game, 
@@ -142,7 +142,7 @@ function Run-SoraAI {
 }
 
 
-function run-bot { 
+function Run-Bot { 
     Param(
         $name, 
         [string[]]
@@ -162,13 +162,13 @@ function run-bot {
         {
             write-verbose $g -verbose
             $psboundparameters['game'] = $g
-            run-botonce @psboundparameters
+            Run-BotOnce @psboundparameters
         }     
     }
 }
 
 
-function run-botcheckpoint { 
+function Run-BotCheckpoint { 
     Param(
         $name, 
         [string[]]
@@ -185,7 +185,7 @@ function run-botcheckpoint {
     if (-not $nocopy)
     {
 		$date = Get-Date -Format 'yyyy-MM-dd'
-		create-checkpoint -backup "C:\generals-bot-historical\generals-bot-$date"
+		Create-Checkpoint -backup "C:\generals-bot-historical\generals-bot-$date"
     }
     while($true)
     {
@@ -193,13 +193,13 @@ function run-botcheckpoint {
         {
             write-verbose $g -verbose
             $psboundparameters['game'] = $g
-            run-botonce @psboundparameters -path "C:\generals-bot-checkpoint\bot_ek0x45.py"
+            Run-BotOnce @psboundparameters -path "C:\generals-bot-checkpoint\bot_ek0x45.py"
         }
     }
 }
 
 
-function create-checkpoint {
+function Create-Checkpoint {
 	Param(
 		$source = 'C:\generals-bot\',
 		$dest = 'C:\generals-bot-checkpoint\',
@@ -210,4 +210,24 @@ function create-checkpoint {
 		robocopy $source $backup /MIR
 	}
 	robocopy $source $dest /MIR
+}
+
+
+function Run-Human {
+	Param(
+		$game = @('1v1', 'ffa', '1v1'),
+		$sleepMax = 5
+	)
+	$splat = @{
+		noui = $false
+		right = $true
+	}
+	while ($true)
+	{
+		foreach ($g in $game)
+		{
+			Run-BotOnce -game $g -name "Human.exe" -public @splat
+			Start-Sleep -Seconds (Get-Random -Min 0 -Max $sleepMax)
+		}
+	}
 }

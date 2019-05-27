@@ -448,11 +448,7 @@ class GeneralsViewer(object):
 					# Draw Text Value
 					if (tile.army != 0 and tile.discovered): # Don't draw on empty tiles
 						textVal = str(tile.army)
-						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))			
-					# Draw delta
-					if (tile.delta.armyDelta != 0): # Don't draw on empty tiles
-						textVal = str(tile.delta.armyDelta)
-						self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 2))
+						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))
 					# Draw coords					
 					textVal = "{},{}".format(tile.x, tile.y)
 					self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left, pos_top - 2))
@@ -471,6 +467,14 @@ class GeneralsViewer(object):
 							textVal = "{0:.0f}".format(text)
 							if (text == -1000000): #then was skipped
 								textVal = "x"		
+							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
+							
+					if (self._map.ekBot.viewInfo.bottomLeftGridText != None):
+						text = self._map.ekBot.viewInfo.bottomLeftGridText[column][row]
+						if (text != None):
+							textVal = "{0:.0f}".format(text)
+							if (text == -1000000): #then was skipped
+								textVal = "x"
 							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
 							
 			#print("replay {} turn {}".format(self.repId, self._map.turn))

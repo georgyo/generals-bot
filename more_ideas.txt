@@ -21,7 +21,19 @@ then next, and so on until no tiles remain or time is used up.
 
 When gathering to tiles in our territory, first do an expansion from it and see the max amount of army used before repeatedly traversing over shitty territory, and don't gather more army than that.
 
+[2:21 PM] EklipZ: goals for today: fix expansion. Implement basic city contestation.
+Goals for tomorrow: Army tracking and interception
+[2:23 PM] EklipZ: @Ethryn @general hitler @spraget  is it generally accepted that when you see an opp take a city in the relative early game, it is better to finish out the round expanding / attacking and then take a city yourself only at the start of the next round? (instead of immediately taking a city yourself even mid-round like human.exe currently does?)
 
+
+[2:25 PM] EklipZ: 1: gather ~ half the time, 2: launch attack up to border, 3: do stuff with army (either dive in or take tiles)
+[2:25 PM] EklipZ: so if you're at stage 1 when you see them take city, you take city immediately, stage 2 (attack hasn't reached border yet), ??? stage 3 continue attack
+[2:27 PM] Ethryn: something like that
+[2:27 PM] Ethryn: stage two really depends
+[2:27 PM] Ethryn: if i think i can take a bunch of tiles before the end of the round
+[2:27 PM] Ethryn: i will
+[2:27 PM] Ethryn: if not
+[2:27 PM] Ethryn: i'll go for a city
 
 
 

@@ -35,13 +35,12 @@
     <Compile Include="base\viewer.py" />
     <Compile Include="base\__init__.py" />
     <Compile Include="bot_ek0x45.py" />
-    <Compile Include="bot_blob.py" />
-    <Compile Include="bot_path_collect.py" />
     <Compile Include="DataModels.py" />
     <Compile Include="Directives\BasicPath.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Directives\Directives.py" />
+    <Compile Include="History.py" />
     <Compile Include="Path.py" />
     <Compile Include="Territory.py" />
     <Compile Include="SearchUtils.py" />

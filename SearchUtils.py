@@ -29,7 +29,7 @@ class Counter(object):
 		self.value = self.value + value
 		
 def new_map_matrix(map, initialValueFunc):
-	return [[initialValueFunc(x,y) for x in range(map.rows)] for y in range(map.cols)]
+	return [[initialValueFunc(x, y) for x in range(map.rows)] for y in range(map.cols)]
 	
 
 def where(list, filter):

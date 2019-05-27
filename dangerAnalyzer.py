@@ -13,8 +13,8 @@ import json
 from collections import deque 
 from queue import PriorityQueue
 from pprint import pprint,pformat
-from SearchUtils import a_star_kill, dest_breadth_first_target
-from DataModels import get_tile_list_from_path
+from SearchUtils import *
+from DataModels import *
 from Path import PathFromPathNode
 from enum import Enum
 
@@ -91,12 +91,13 @@ class DangerAnalyzer(object):
 		saveTile = None
 		for player in self.map.players:
 			if not player.dead and (player.index != general.player) and player.index not in self.map.teammates and len(self.playerTiles[player.index]) > 0 and self.map.players[player.index].tileCount > 10:
-				path = dest_breadth_first_target(self.map, [general], -1, 0.05, depth, None, player.index, False, 6)
+				# -1.5 because of the stupid increment we're using.
+				path = dest_breadth_first_target(self.map, [general], -1.5, 0.05, depth, None, player.index, False, 6)
 				if path != None and (curThreat == None or path.length < curThreat.length or (path.length == curThreat.length and path.value > curThreat.value)):
-					#self.viewInfo.addSearched(path[1].tile)
-					#logging.info("DangerAnalyzer path bug! tail {}! Path {}".format(path.tail.toString(), path.toString()))
+					# If there is NOT another path to our general that doesn't hit the same tile next to our general, then we can use one extra turn on defense
+					# gathering to that 'saveTile'.
 					lastTile = path.tail.prev.tile
-					altPath = dest_breadth_first_target(self.map, [general], -1, 0.05, path.length + 5, None, player.index, False, 6, skipTiles = [lastTile])
+					altPath = dest_breadth_first_target(self.map, [general], -1.5, 0.05, path.length + 5, None, player.index, False, 6, skipTiles = [lastTile])
 					if altPath == None or altPath.length > path.length:
 						saveTile = lastTile
 						logging.info("saveTile blocks path to our king: {},{}".format(saveTile.x, saveTile.y))
