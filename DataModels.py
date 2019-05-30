@@ -107,6 +107,8 @@ class Move(object):
 		if (None == other):
 			return False
 		return self.source.army - self.dest.army == other.source.army - other.dest.army
+	def __str__(self):
+		return self.toString()
 
 	def toString(self):
 		moveHalfString = ""

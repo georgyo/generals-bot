@@ -26,7 +26,10 @@ class PathMove(object):
 
 	def clone(self):
 		return PathMove(self.tile, self.next, self.prev)
-	
+
+	def __str__(self):
+		return self.toString()
+
 	def toString(self):
 		prevVal = "[]"
 		if self.prev != None:
@@ -46,6 +49,8 @@ class PathMove(object):
 	#	if (other == None):
 	#		return True
 	#	return self.turn < other.turn
+	def __str__(self):
+		return self.toString()
 
 
 class Path(object):
@@ -189,6 +194,9 @@ class Path(object):
 			else:
 				newPath.remove_end()
 		return newPath
+
+	def __str__(self):
+		return self.toString()
 
 	def toString(self):
 		val = "[{} len {}] ".format(self.value, self.length)

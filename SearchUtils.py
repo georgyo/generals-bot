@@ -732,7 +732,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 					   ignoreStartTile = False,
 					   incrementBackward = False,
 					   preferNeutral = False,
-					   useGlobalVisitedSet = True):
+					   useGlobalVisitedSet = True,
+					   logResultValues = False):
 	'''
 	startTiles dict is (startPriorityObject, distance) = startTiles[tile]
 	goalFunc is (currentTile, priorityObject) -> True or False
@@ -838,6 +839,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 		newValue = valueFunc(current, prioVals)
 		if maxValue == None or newValue > maxValue:
 			foundDist = dist
+			if logResultValues:
+				logging.info("New max value: [{}]".format('], ['.join(str(x) for x in newValue)))
 			maxValue = newValue
 			endNode = current
 		if dist > depthEvaluated:

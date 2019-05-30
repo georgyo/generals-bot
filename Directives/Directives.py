@@ -23,7 +23,8 @@ class Timings():
 	
 	def toString(self):
 		return "cycle {}, split {}, offset {}".format(self.cycleTurns, self.splitTurns, self.offsetTurns)
-
+	def __str__(self):
+		return self.toString()
 
 class Directive():
 	def __init__(self, type = None):

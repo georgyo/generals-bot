@@ -552,7 +552,9 @@ class Tile(object):
 			return "Obstacle"
 		return "Player " + str(tile)
 	
-	
+	def __str__(self):
+		return self.toString()
+
 	def toString(self):
 		return "{},{}".format(self.x, self.y)	
 	
