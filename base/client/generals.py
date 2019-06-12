@@ -292,8 +292,10 @@ class Generals(object):
 				logging.info("error_set_username, ???")
 				None
 			elif msg[0] == "error_banned":
-				logging.info("TOO MANY CONNECTION ATTEMPTS :( sleeping and then trying again")
-				time.sleep(random.choice(range(45)) + 5)
+				sleepDuration = random.choice(range(20,60))
+				logging.info("TOO MANY CONNECTION ATTEMPTS? {}\n:( sleeping and then trying again in {}".format(msg, sleepDuration))
+				time.sleep(sleepDuration)
+				logging.info("Terminating")
 				self._terminate()
 				None
 			else:

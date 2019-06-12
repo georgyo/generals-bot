@@ -29,6 +29,7 @@ from test.test_float import INF
 from Path import Path, PathMove, PathFromPathNode
 from History import *
 from Territory import *
+from ArmyTracker import *
 
 GENERAL_HALF_TURN = 20000
 
@@ -143,6 +144,7 @@ class EklipZBot(object):
 		self._reachableTiles = None
 		self.history = History()
 		self.timings = None
+		self.armyTracker = None
 
 	def spawnWorkerThreads(self):
 		return
@@ -316,11 +318,12 @@ class EklipZBot(object):
 			self._map.notify_tile_deltas.append(self.handle_tile_deltas)
 			self._map.notify_tile_discovered.append(self.handle_tile_discovered)
 			self._map.notify_tile_revealed.append(self.handle_tile_revealed)
-
-		if self.territories == None:
-			self.territories = TerritoryClassifier(self._map)
+			self.armyTracker = ArmyTracker(self._map)
+			if self.territories == None:
+				self.territories = TerritoryClassifier(self._map)
 		if self.territories.should_recalculate(self._map.turn):
 			self.territories.scan()
+		self.armyTracker.scan()
 
 
 
@@ -3465,8 +3468,12 @@ class EklipZBot(object):
 					if node.tile not in negativeTiles and node.tile not in visited:
 						if node.tile.player == -1:
 							tilesGrabbed += 1
-						if node.tile.player == self.targetPlayer:
-							tilesGrabbed += 2
+						elif node.tile.player == self.targetPlayer:
+							# slight boost to taking opp tiles
+							tilesGrabbed += 2.5
+						elif node.tile.player != self.general.player:
+							# deprioritize non-target-enemy tiles, but take them if necessary
+							tilesGrabbed += 0.2
 						visited.add(node.tile)
 					if node.tile.player == self.general.player and (node.tile.isCity or node.tile.isGeneral):
 						friendlyCityCount += 1
@@ -3550,7 +3557,9 @@ class EklipZBot(object):
 		
 	
 
-	def get_path_to_target_player(self, skipEnemyCities = False):
+	def get_path_to_target_player(self, skipEnemyCities = False, cutLength = 22):
+		# TODO on long distances or higher city counts or FFA-post-kills don't use general path, just find max path to target player and gather to that
+
 		undiscoveredCounterDepth = 5
 		maxTile = self.general
 		maxAmount = 0
@@ -3558,7 +3567,10 @@ class EklipZBot(object):
 		self._evaluatedUndiscoveredCache = []
 		if (self.targetPlayer != -1):
 			if self._map.generals[self.targetPlayer] != None:
-				return self.get_path_to_target(self._map.generals[self.targetPlayer], skipEnemyCities = skipEnemyCities)
+				path = self.get_path_to_target(self._map.generals[self.targetPlayer], skipEnemyCities = skipEnemyCities)
+				if path.length > cutLength:
+					path = path.get_subsegment(cutLength, end = True)
+				return path
 
 			undiscoveredCounterDepth = 5
 			for tile in self.reachableTiles:
@@ -3637,6 +3649,8 @@ class EklipZBot(object):
 			breadth_first_foreach(self._map, [maxTile], undiscoveredCounterDepth, undiscoveredMarker, noLog = True)
 
 		path = self.get_path_to_target(maxTile, skipEnemyCities = skipEnemyCities, preferNeutral = self._map.remainingPlayers < 3)
+		if path.length > cutLength:
+			path = path.get_subsegment(cutLength, end = True)
 		logging.info("Highest density undiscovered tile {},{} with value {} found in {}, \npath {}".format(maxTile.x, maxTile.y, maxAmount, time.time() - startTime, path.toString()))
 		if self.targetPlayer == -1 and self._map.remainingPlayers > 2:
 			# To avoid launching out into the middle of the FFA, just return the general tile and the next tile in the path as the path. 

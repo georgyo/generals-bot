@@ -35,6 +35,7 @@
     <Compile Include="base\viewer.py" />
     <Compile Include="base\__init__.py" />
     <Compile Include="bot_ek0x45.py" />
+    <Compile Include="ArmyTracker.py" />
     <Compile Include="DataModels.py" />
     <Compile Include="Directives\BasicPath.py">
       <SubType>Code</SubType>

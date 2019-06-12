@@ -6,6 +6,7 @@
 '''
 import os
 import pygame
+from pygame import *
 import threading
 import time
 from collections import deque 
@@ -162,8 +163,6 @@ class GeneralsViewer(object):
 
 	def _drawGrid(self):
 		try:
-
-
 			self._screen.fill(BLACK) # Set BG Color
 			self._transparent.fill((0,0,0,0)) # transparent
 			allInText = " "
@@ -289,6 +288,7 @@ class GeneralsViewer(object):
 
 			# Draw path
 			self.drawGathers()
+			self.draw_armies()
 			
 			while len(self._map.ekBot.viewInfo.paths) > 0:
 				pColorer = self._map.ekBot.viewInfo.paths.pop()	
@@ -486,6 +486,40 @@ class GeneralsViewer(object):
 		except:
 			raise
 			# print("Unexpected error:", sys.exc_info()[0])
+
+	def draw_army(self, army, R, G, B, alphaStart, alphaDec, alphaMin):
+		alpha = alphaStart
+		key = BLACK
+		color = (R,G,B)
+		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
+		# first, "erase" the surface by filling it with a color and
+		# setting this color as colorkey, so the surface is empty
+		s.fill(key)
+		s.set_colorkey(key)
+			
+		# after drawing the circle, we can set the 
+		# alpha value (transparency) of the surface
+		tile = army.tile
+
+		#print("drawing path {},{} -> {},{}".format(tile.x, tile.y, toTile.x, toTile.y))
+		pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
+		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
+		xOffs = 0
+		yOffs = 0
+		square = Rect(0, 0, CELL_WIDTH, CELL_HEIGHT)
+		pygame.draw.rect(s, color, square, 1)
+			
+		s.set_alpha(alpha)
+		self._screen.blit(s, (pos_left + xOffs * CELL_WIDTH, pos_top + yOffs * CELL_HEIGHT))
+
+		self.draw_path(army.path, R, G, B, alphaStart, alphaDec, alphaMin)
+
+
+	def draw_armies(self):
+		for army in list(self._map.ekBot.armyTracker.armies.values()):
+			self.draw_army(army, 255, 255, 255, 150, 10, 100)
+		for army in list(self._map.ekBot.armyTracker.scrapped_armies):
+			self.draw_army(army, 200, 200, 200, 70, 2, 60)
 	
 	def draw_path(self, pathObject, R, G, B, alphaStart, alphaDec, alphaMin):
 		if pathObject == None:
@@ -496,10 +530,10 @@ class GeneralsViewer(object):
 		color = (R,G,B)
 		while (path != None and path.next != None):
 			s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
+			s.set_colorkey(key)
 			# first, "erase" the surface by filling it with a color and
 			# setting this color as colorkey, so the surface is empty
 			s.fill(key)
-			s.set_colorkey(key)
 			
 			# after drawing the circle, we can set the 
 			# alpha value (transparency) of the surface

@@ -101,6 +101,7 @@ function Run-BotOnce {
 				`$folder = Get-ChildItem "H:\GeneralsLogs" -Filter "*`$repId*" -Directory
 				`$newLogPath = Join-Path `$folder.FullName "_`$logFile"
 				`$newContent | Set-Content -Path `$newLogPath -Force
+				`$null = mkdir H:\GeneralsLogs\GroupedLogs -Force
 				`$newFolder = Move-Item `$folder.FullName "H:\GeneralsLogs\GroupedLogs" -PassThru
 				`$newName = "`$logName---`$repId"
 				Rename-Item `$newFolder.FullName `$newName -PassThru
