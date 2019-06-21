@@ -298,7 +298,7 @@ class EklipZBot(object):
 		if self.general == None:
 			self.general = self._map.generals[self._map.player_index]
 		self._minAllowableArmy = -1
-		self._gen_distances = None
+		self._gen_distances = build_distance_map(self._map, [self.general])
 		self.enemyCities = []
 		if self._map.turn - 3 > self.lastTimingTurn:
 			self.lastTimingFactor = -1
@@ -323,7 +323,10 @@ class EklipZBot(object):
 				self.territories = TerritoryClassifier(self._map)
 		if self.territories.should_recalculate(self._map.turn):
 			self.territories.scan()
-		self.armyTracker.scan()
+		lastMove = None
+		if self._map.turn - 1 in self.history.moveHistory:
+			lastMove = self.history.moveHistory[self._map.turn - 1][0]
+		self.armyTracker.scan(self._gen_distances, lastMove)
 
 
 
@@ -425,14 +428,14 @@ class EklipZBot(object):
 		# build fourth path
 		# build fifth path
 
-		path = self.get_optimal_expansion(51 - self._map.turn)
+		path = self.get_optimal_expansion(50 - self._map.turn)
 		#is1v1 = self._map.remainingPlayers == 2
 		#gatherNodes = self.build_mst([self.general])
 		#self.gatherNodes = gatherNodes
 
-		if (self._map.turn < 46 and self.general.army < 3 
+		if (self._map.turn < 46 and self.general.army < 3
 			and self._map.players[self.general.player].standingArmy + 1 == self.general.army 
-			and count(self.general.adjacents, lambda tile: tile.player == -1) > 0):
+			and count(self.general.adjacents, lambda tile: not tile.mountain and tile.player == -1) > 0):
 			self.info("Skipping move because general.army < 3 and all army on general and self._map.turn < 46")
 			# dont send 2 army except right before the bonus, making perfect first 25 much more likely
 			return None
@@ -2751,14 +2754,14 @@ class EklipZBot(object):
 			genArmyAfterMove = 1
 		dangerTiles = set()
 		toCheck = []
-		if (general.left != None and general.left.left != None):
-			toCheck.append(general.left.left)
-		if (general.bottom != None and general.bottom.bottom != None):
-			toCheck.append(general.bottom.bottom)
-		if (general.top != None and general.top.top != None):
-			toCheck.append(general.top.top)
-		if (general.right != None and general.right.right != None):
-			toCheck.append(general.right.right)
+		#if (general.left != None and general.left.left != None):
+		#	toCheck.append(general.left.left)
+		#if (general.bottom != None and general.bottom.bottom != None):
+		#	toCheck.append(general.bottom.bottom)
+		#if (general.top != None and general.top.top != None):
+		#	toCheck.append(general.top.top)
+		#if (general.right != None and general.right.right != None):
+		#	toCheck.append(general.right.right)
 
 		for tile in toCheck:
 			if (tile != None and tile.player != general.player and tile.player != -1 and tile.army - 4 > genArmyAfterMove):					
@@ -3143,7 +3146,7 @@ class EklipZBot(object):
 						leafValue += 2
 						leafValue *= 4
 
-					if self._map.remainingPlayers <= 3 and not tile.isvisible() and not tile.mountain and not tile.isobstacle():
+					if self._map.remainingPlayers <= 3 and not tile.visible and not tile.mountain and not tile.isobstacle():
 						leafValue += 1
 
 			#midWeight = pow(pow(abs(leaf.dest.x - mapMid[0]), 2) + pow(abs(leaf.dest.y - mapMid[1]), 2), 0.5) - (self._map.cols + self._map.rows) / 6
@@ -3397,13 +3400,16 @@ class EklipZBot(object):
 		
 		if turns < 0:
 			turns = 50
-		remainingTurns = turns
+		remainingTurns = turns + 1
 		sortedTiles = sorted(list(where(generalPlayer.tiles, lambda tile: tile.army > 1)), key = lambda tile: 0 - tile.army)
 		paths = []
 		fullCutoff = 15
 		cutoffFactor = 1
 
 		# BACKPACK THIS EXPANSION! Don't stop at remainingTurns 0... just keep finding paths until out of time, then knapsack them
+
+		# Switch this up to use more tiles at the start, just removing the first tile in each path at a time. Maybe this will let us find more 'maximal' paths?
+
 
 		while remainingTurns > 0 and cutoffFactor <= fullCutoff:
 			timeUsed = time.time() - startTime
@@ -3462,6 +3468,8 @@ class EklipZBot(object):
 				tilesGrabbed = 0
 				visited = set()
 				friendlyCityCount = 0
+				# only add the first tile in the path
+				negativeTiles.add(node.tile)
 				while node != None:
 					if node.tile in startDict:
 						del startDict[node.tile]
@@ -3478,7 +3486,7 @@ class EklipZBot(object):
 					if node.tile.player == self.general.player and (node.tile.isCity or node.tile.isGeneral):
 						friendlyCityCount += 1
 					# this tile is now worth nothing because we already intend to use it ?
-					negativeTiles.add(node.tile)
+					# negativeTiles.add(node.tile)
 					node = node.next
 				paths.append((friendlyCityCount, tilesGrabbed, path))
 			else:
@@ -3509,8 +3517,17 @@ class EklipZBot(object):
 		alpha = 75
 		minAlpha = 50
 		alphaDec = 2
+		trimmable = {}
 		for pathTuple in paths:
 			friendlyCityCount, tilesCaptured, path = pathTuple
+			tailNode = path.tail
+			trimCount = 0
+			while tailNode.tile.player == -1 and self.territories.territoryMap[tailNode.tile.x][tailNode.tile.y] != self.targetPlayer:
+				trimCount += 1
+				tailNode = tailNode.prev
+			if trimCount > 0:
+				trimmable[path.start.tile] = (path, trimCount)
+
 			self.viewInfo.bottomRightGridText[path.start.tile.x][path.start.tile.y] = tilesCaptured
 			self.viewInfo.paths.appendleft(PathColorer(path, 180, 51, 254, alpha, alphaDec, minAlpha))
 
@@ -3522,17 +3539,40 @@ class EklipZBot(object):
 			friendlyCityCount, tilesCaptured, curPath = pathTuple
 			logging.info("{}:  cap {} length {} path {}".format(i, tilesCaptured, curPath.length, curPath.toString()))
 
-		maxKnapsackedPaths = solve_knapsack(paths, turns, weights, values)
-		logging.info("maxKnapsackedPaths length {} Duration {:.3f},".format(len(maxKnapsackedPaths), time.time() - startTime))
+		totalValue, maxKnapsackedPaths = solve_knapsack(paths, turns, weights, values)
+		logging.info("maxKnapsackedPaths value {} length {},".format(totalValue, len(maxKnapsackedPaths)))
 
 		path = None
 		if len(maxKnapsackedPaths) > 0:
 			maxVal = (-100, -1)
+			totalTrimmable = 0
 			for pathTuple in maxKnapsackedPaths:
 				friendlyCityCount, tilesCaptured, curPath = pathTuple
+				if curPath.start.tile in trimmable:
+					logging.info("trimmable in current knapsack, {}".format(curPath.toString()))
+					trimmablePath, possibleTrim = trimmable[curPath.start.tile]
+					totalTrimmable += possibleTrim
+			logging.info("totalTrimmable! {}".format(totalTrimmable))
 
+			# see if there are better knapsacks if we trim the ends off some of these
+			maxKnapsackVal = totalValue
+			for i in range(min(5, 1 + totalTrimmable // 2)):
+				otherValue, otherKnapsackedPaths = solve_knapsack(paths, turns + 2*i, weights, values)
+				# offset by i to compensate for the skipped moves
+				logging.info("i {} - otherKnapsackedPaths value {} length {}".format(i, otherValue, len(otherKnapsackedPaths)))
+				if (otherValue - i > maxKnapsackVal):
+					maxKnapsackVal = otherValue
+					maxKnapsackedPaths = otherKnapsackedPaths
+					logging.info("NEW MAX {}".format(max))
+
+			for pathTuple in maxKnapsackedPaths:
+				friendlyCityCount, tilesCaptured, curPath = pathTuple
+				trimmableVal = 0
+				if curPath.start.tile in trimmable:
+					trimmablePath, possibleTrim = trimmable[curPath.start.tile]
+					trimmableVal = possibleTrim
 				# the +1 lightly de-favors 1-move expansions by moving them to 2 moves per tile captured to weight longer paths a bit higher
-				thisVal = (0-friendlyCityCount, tilesCaptured / (curPath.length + 1))
+				thisVal = (0 - trimmableVal, 0-friendlyCityCount, tilesCaptured / (curPath.length))
 				if thisVal > maxVal:
 					maxVal = thisVal
 					path = curPath
@@ -3557,7 +3597,7 @@ class EklipZBot(object):
 		
 	
 
-	def get_path_to_target_player(self, skipEnemyCities = False, cutLength = 22):
+	def get_path_to_target_player(self, skipEnemyCities = False, cutLength = 19):
 		# TODO on long distances or higher city counts or FFA-post-kills don't use general path, just find max path to target player and gather to that
 
 		undiscoveredCounterDepth = 5
@@ -3744,16 +3784,18 @@ class EklipZBot(object):
 
 				elif(tile.player != -1):
 					if(tile.isCity):
-						self.enemyCities.append(tile)	
-				if (not tile.isvisible() and not ((tile.isCity or tile.isGeneral) and self._map.turn > 250) and (self._map.turn - tile.lastSeen >= 100 or (self._map.turn - tile.lastSeen > 25 and tile.army > 25))):
-					player = self._map.players[tile.player]
-					if player.tileCount > 0:
-						tile.army = int((player.standingArmy / player.tileCount) / (player.cityCount / 2 + 1))
-				if (not tile.isvisible() and tile.isCity and tile.player != -1 and self._map.turn - tile.lastSeen > 25):
-					player = self._map.players[tile.player]
-					if player.cityCount > 0:
-						tile.army = int((player.standingArmy / player.cityCount) / 8)
-				if tile.player == self._map.player_index and tile.army > 4:
+						self.enemyCities.append(tile)
+				## No idea what this was supposed to do. wtf
+				#if (not tile.visible and not ((tile.isCity or tile.isGeneral) and self._map.turn > 250) and (self._map.turn - tile.lastSeen >= 100 or (self._map.turn - tile.lastSeen > 25 and tile.army > 25))):
+				#	player = self._map.players[tile.player]
+				#	if player.tileCount > 0:
+				#		tile.army = int((player.standingArmy / player.tileCount) / (player.cityCount / 2 + 1))
+				## Same thing as above but for cities?
+				#if (not tile.visible and tile.isCity and tile.player != -1 and self._map.turn - tile.lastSeen > 25):
+				#	player = self._map.players[tile.player]
+				#	if player.cityCount > 0:
+				#		tile.army = int((player.standingArmy / player.cityCount) / 8)
+				if tile.player == self._map.player_index and tile.army > 5:
 					for enemyGen in self.largeTilesNearEnemyKings.keys():
 						if tile.army > enemyGen.army and self.euclidDist(tile.x, tile.y, enemyGen.x, enemyGen.y) < 12:
 							self.largeTilesNearEnemyKings[enemyGen].append(tile)

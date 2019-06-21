@@ -120,5 +120,5 @@ class DangerAnalyzer(object):
 				tile = self.map.grid[y][x]
 				if (tile.player != -1):
 					self.playerTiles[tile.player].append(tile)
-					if(tile.player not in self.map.teammates and tile.player != general.player and tile.army > max(2, general.army / 4) and tile.isvisible() and not tile.isGeneral):
+					if(tile.player not in self.map.teammates and tile.player != general.player and tile.army > max(2, general.army / 4) and tile.visible and not tile.isGeneral):
 						self.largeVisibleEnemyTiles.append(tile)

@@ -9,6 +9,7 @@ import pygame
 from pygame import *
 import threading
 import time
+import logging
 from collections import deque 
 from copy import deepcopy
 from base.client.generals import _spawn
@@ -47,6 +48,7 @@ CELL_MARGIN = 1
 SCORES_ROW_HEIGHT = 33
 INFO_ROW_HEIGHT = 35
 PLUS_DEPTH = 9
+SQUARE = Rect(0, 0, CELL_WIDTH, CELL_HEIGHT)
 
 
 class GeneralsViewer(object):
@@ -132,17 +134,16 @@ class GeneralsViewer(object):
 
 	def mainViewerLoop(self, alignTop = True, alignLeft = True):
 		while not self._receivedUpdate: # Wait for first update
-			time.sleep(0.1)
+			time.sleep(0.2)
 		x = 3 if alignLeft else 1920 - 3 - (CELL_WIDTH + CELL_MARGIN) * self._map.cols 
 		y = 3 if alignTop else 1080 - 3 - (CELL_HEIGHT + CELL_MARGIN) * self._map.rows
 		self._initViewier((x, y))
 
 		done = False
 		while not done:
-			if (self._receivedUpdate and self._map.ekBot.viewInfo.readyToDraw):
+			if (self._map.ekBot.viewInfo.readyToDraw):
 				self._map.ekBot.viewInfo.readyToDraw = False
 				self._drawGrid()
-				self._receivedUpdate = False
 				self._readyRender = True
 			for event in pygame.event.get(): # User did something
 				if event.type == pygame.QUIT: # User clicked quit
@@ -157,7 +158,7 @@ class GeneralsViewer(object):
 					print("Click ", pos, "Grid coordinates: ", row, column)
 
 
-			time.sleep(0.03)
+			time.sleep(0.05)
 		time.sleep(2.0)
 		pygame.quit() # Done.  Quit pygame.
 
@@ -226,7 +227,7 @@ class GeneralsViewer(object):
 					color = WHITE
 					color_font = WHITE
 
-					if tile.ismountain(): # Mountain
+					if tile.mountain: # Mountain
 						color = BLACK
 					elif tile.player >= 0:
 						playercolor = PLAYER_COLORS[tile.player]
@@ -237,7 +238,7 @@ class GeneralsViewer(object):
 							colorR = colorR + KING_COLOR_OFFSET if colorR <= 255 - KING_COLOR_OFFSET else 255
 							colorG = colorG + KING_COLOR_OFFSET if colorG <= 255 - KING_COLOR_OFFSET else 255
 							colorB = colorB + KING_COLOR_OFFSET if colorB <= 255 - KING_COLOR_OFFSET else 255
-						if (not tile.isvisible()): 
+						if (not tile.visible): 
 							colorR = colorR / 2.3 + FOG_COLOR_OFFSET
 							colorG = colorG / 2.3 + FOG_COLOR_OFFSET
 							colorB = colorB / 2.3 + FOG_COLOR_OFFSET
@@ -248,10 +249,10 @@ class GeneralsViewer(object):
 						color = UNDISCOVERED_GRAY					
 					elif tile.isCity and tile.player == -1:
 						color = UNDISCOVERED_GRAY
-						if (tile.isvisible()):
+						if (tile.visible):
 							color = GRAY
 						color_font = WHITE
-					elif not tile.isvisible(): 
+					elif not tile.visible: 
 						color = GRAY
 					else:
 						color_font = BLACK
@@ -288,7 +289,6 @@ class GeneralsViewer(object):
 
 			# Draw path
 			self.drawGathers()
-			self.draw_armies()
 			
 			while len(self._map.ekBot.viewInfo.paths) > 0:
 				pColorer = self._map.ekBot.viewInfo.paths.pop()	
@@ -400,7 +400,8 @@ class GeneralsViewer(object):
 							#print("down " + str(tile.x) + "," + str(tile.y))
 							pygame.draw.polygon(self._screen, GRAY_DARK, [(pos_left, pos_top + 3 * CELL_HEIGHT / 4), (pos_left + CELL_WIDTH, pos_top + 3 * CELL_HEIGHT / 4), (pos_left + CELL_WIDTH / 2, pos_top + 5 * CELL_HEIGHT / 4)])			
 
-
+			
+			self.draw_armies()
 
 			#print("drawing text")
 			#draw text
@@ -411,7 +412,7 @@ class GeneralsViewer(object):
 					pos_top = (CELL_MARGIN + CELL_HEIGHT) * row + CELL_MARGIN
 					color = WHITE
 					color_font = WHITE
-					if tile.ismountain(): # Mountain
+					if tile.mountain: # Mountain
 						color = BLACK
 					elif tile.player >= 0:
 						playercolor = PLAYER_COLORS[tile.player]
@@ -422,7 +423,7 @@ class GeneralsViewer(object):
 							colorR = colorR + KING_COLOR_OFFSET if colorR <= 255 - KING_COLOR_OFFSET else 255
 							colorG = colorG + KING_COLOR_OFFSET if colorG <= 255 - KING_COLOR_OFFSET else 255
 							colorB = colorB + KING_COLOR_OFFSET if colorB <= 255 - KING_COLOR_OFFSET else 255
-						if (not tile.isvisible()): 
+						if (not tile.visible): 
 							colorR = colorR / 2 + 40
 							colorG = colorG / 2 + 40
 							colorB = colorB / 2 + 40
@@ -433,10 +434,10 @@ class GeneralsViewer(object):
 						color = UNDISCOVERED_GRAY
 					elif tile.isCity and tile.player == -1:
 						color = UNDISCOVERED_GRAY
-						if (tile.isvisible()):
+						if (tile.visible):
 							color = GRAY
 						color_font = WHITE
-					elif not tile.isvisible(): 
+					elif not tile.visible: 
 						color = GRAY
 					else:
 						color_font = BLACK
@@ -446,7 +447,7 @@ class GeneralsViewer(object):
 						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))
 						
 					# Draw Text Value
-					if (tile.army != 0 and tile.discovered): # Don't draw on empty tiles
+					if (tile.army != 0 and (tile.discovered or tile in self._map.ekBot.armyTracker.armies)): # Don't draw on empty tiles
 						textVal = str(tile.army)
 						self._screen.blit(self._font.render(textVal, True, color_font), (pos_left + 2, pos_top + CELL_HEIGHT / 4))
 					# Draw coords					
@@ -487,39 +488,41 @@ class GeneralsViewer(object):
 			raise
 			# print("Unexpected error:", sys.exc_info()[0])
 
-	def draw_army(self, army, R, G, B, alphaStart, alphaDec, alphaMin):
-		alpha = alphaStart
+	def draw_square(self, tile, width, R, G, B, alpha):
 		key = BLACK
 		color = (R,G,B)
 		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
 		# first, "erase" the surface by filling it with a color and
 		# setting this color as colorkey, so the surface is empty
 		s.fill(key)
-		s.set_colorkey(key)
+		s.set_colorkey(key)			
+
+		pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
+		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
+		#logging.info("drawing square for tile {} alpha {} width {} at pos {},{}".format(tile.toString(), alpha, width, pos_left, pos_top))
+		
+		pygame.draw.rect(s, color, SQUARE, width)
 			
+		s.set_alpha(alpha)
+		self._screen.blit(s, (pos_left, pos_top))
+
+	def draw_army(self, army, R, G, B, alphaStart):
 		# after drawing the circle, we can set the 
 		# alpha value (transparency) of the surface
 		tile = army.tile
+		self.draw_square(tile, 1, R, G, B, alphaStart + 40)
 
-		#print("drawing path {},{} -> {},{}".format(tile.x, tile.y, toTile.x, toTile.y))
+		self.draw_path(army.path, R, G, B, alphaStart, 0, 0)
+		
 		pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
 		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
-		xOffs = 0
-		yOffs = 0
-		square = Rect(0, 0, CELL_WIDTH, CELL_HEIGHT)
-		pygame.draw.rect(s, color, square, 1)
-			
-		s.set_alpha(alpha)
-		self._screen.blit(s, (pos_left + xOffs * CELL_WIDTH, pos_top + yOffs * CELL_HEIGHT))
-
-		self.draw_path(army.path, R, G, B, alphaStart, alphaDec, alphaMin)
-
+		self._screen.blit(self._font.render(army.name, True, WHITE), (pos_left + CELL_WIDTH - 10, pos_top))
 
 	def draw_armies(self):
 		for army in list(self._map.ekBot.armyTracker.armies.values()):
-			self.draw_army(army, 255, 255, 255, 150, 10, 100)
+			self.draw_army(army, 255, 255, 255, 120)
 		for army in list(self._map.ekBot.armyTracker.scrapped_armies):
-			self.draw_army(army, 200, 200, 200, 70, 2, 60)
+			self.draw_army(army, 200, 200, 200, 70)
 	
 	def draw_path(self, pathObject, R, G, B, alphaStart, alphaDec, alphaMin):
 		if pathObject == None:

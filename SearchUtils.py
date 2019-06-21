@@ -733,7 +733,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 					   incrementBackward = False,
 					   preferNeutral = False,
 					   useGlobalVisitedSet = True,
-					   logResultValues = False):
+					   logResultValues = False,
+					   noLog = False):
 	'''
 	startTiles dict is (startPriorityObject, distance) = startTiles[tile]
 	goalFunc is (currentTile, priorityObject) -> True or False
@@ -824,7 +825,7 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 	while not frontier.empty():
 		iter += 1
 		if (iter % 1000 == 0 and time.time() - start > maxTime):
-			logging.info("BFS-DYNAMIC-MAX BREAKING")
+			logging.info("BFS-DYNAMIC-MAX BREAKING EARLY")
 			break
 
 		(prioVals, dist, current, parent) = frontier.get()
@@ -856,8 +857,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 				if (skipFunc != None and skipFunc(next, nextVal)):
 					continue
 				frontier.put((nextVal, dist, next, current))
-
-	logging.info("BFS-DYNAMIC-MAX ITERATIONS {}, DURATION: {:.2f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+	if not noLog:
+		logging.info("BFS-DYNAMIC-MAX ITERATIONS {}, DURATION: {:.2f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
 		return None
 		
@@ -888,10 +889,12 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 	# 		path = PathNode(node, path, army, dist, -1, None)
 	pathObject.calculate_value(searchingPlayer)
 	if pathObject.length == 0:
-		logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}, returning NONE!\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
+		if not noLog:
+			logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}, returning NONE!\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
 		return None
 	else:		
-		logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
+		if not noLog:
+			logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
 	return pathObject
 
 
@@ -1316,4 +1319,4 @@ def solve_knapsack(items, capacity, weights, values):
 			res = res - values[i - 1] 
 			w = w - weights[i - 1]
 	logging.info("knapsack completed on {} items for capacity {} finding value {} in Duration {:.2f}".format(n, capacity, K[n][capacity], time.time() - timeStart))
-	return includedItems
+	return (K[n][capacity], includedItems)

@@ -67,35 +67,34 @@ class Map(object):
 		for x in range(self.cols):
 			for y in range(self.rows):
 				tile = self.grid[y][x]
-				tile.topLeft = self.GetTile(x - 1, y - 1)
-				if (tile.topLeft != None):
-					tile.adjacents.append(tile.topLeft)
-				tile.topRight = self.GetTile(x + 1, y - 1)
-				if (tile.topRight != None):
-					tile.adjacents.append(tile.topRight)
-				tile.bottomLeft = self.GetTile(x - 1, y + 1)
-				if (tile.bottomLeft != None):
-					tile.adjacents.append(tile.bottomLeft)
-				tile.bottomRight = self.GetTile(x + 1, y + 1)
-				if (tile.bottomRight != None):
-					tile.adjacents.append(tile.bottomRight)
-				tile.left = self.GetTile(x - 1, y)
-				if (tile.left != None):
-					tile.adjacents.append(tile.left)
-					tile.moveable.append(tile.left)
-				tile.right = self.GetTile(x + 1, y)
-				if (tile.right != None):
-					tile.adjacents.append(tile.right)
-					tile.moveable.append(tile.right)
-				tile.top = self.GetTile(x, y - 1)
-				if (tile.top != None):
-					tile.adjacents.append(tile.top)
-					tile.moveable.append(tile.top)
-				tile.bottom = self.GetTile(x, y + 1)
-				if (tile.bottom != None):
-					tile.adjacents.append(tile.bottom)
-					tile.moveable.append(tile.bottom)
-				
+				moveableTile = self.GetTile(x - 1, y)
+				if (moveableTile != None):
+					tile.adjacents.append(moveableTile)
+					tile.moveable.append(moveableTile)
+				moveableTile = self.GetTile(x + 1, y)
+				if (moveableTile != None):
+					tile.adjacents.append(moveableTile)
+					tile.moveable.append(moveableTile)
+				moveableTile = self.GetTile(x, y - 1)
+				if (moveableTile != None):
+					tile.adjacents.append(moveableTile)
+					tile.moveable.append(moveableTile)
+				moveableTile = self.GetTile(x, y + 1)
+				if (moveableTile != None):
+					tile.adjacents.append(moveableTile)
+					tile.moveable.append(moveableTile)
+				adjTile = self.GetTile(x - 1, y - 1)
+				if (adjTile != None):
+					tile.adjacents.append(adjTile)
+				adjTile = self.GetTile(x + 1, y - 1)
+				if (adjTile != None):
+					tile.adjacents.append(adjTile)
+				adjTile = self.GetTile(x - 1, y + 1)
+				if (adjTile != None):
+					tile.adjacents.append(adjTile)
+				adjTile = self.GetTile(x + 1, y + 1)
+				if (adjTile != None):
+					tile.adjacents.append(adjTile)
 		
 		self.updateTurnGrid = [[int for x in range(self.cols)] for y in range(self.rows)]	# 2D List of Tile Objects
 		self.turn = data['turn']														# Integer Turn # (1 turn / 0.5 seconds)
@@ -249,11 +248,9 @@ class Map(object):
 					tile = self.grid[y][x]
 					if tile.player == captureeIdx:
 						tile.discoveredAsNeutral = True
-						tile.player = capturerIdx
-						tile.army = tile.army // 2
+						tile.update(self, tile.tile, tile.army // 2, overridePlayer = capturerIdx)
 						for eventHandler in self.notify_tile_deltas:
 							eventHandler(tile)
-						
 						if (tile.isCity and not tile in capturingPlayer.cities):
 							capturingPlayer.cities.append(tile)
 						for eventHandler in self.notify_tile_captures:
@@ -369,9 +366,9 @@ class Map(object):
 							curTile.player = bestCandTile.player
 						curTile.delta.fromTile = bestCandTile
 						bestCandTile.delta.toTile = curTile
-				if (not curTile.isvisible() and (curTile.isCity or curTile.isGeneral) and curTile.player >= 0 and self.turn % 2 == 0 and self.turn - curTile.lastSeen < 75):
+				if (not curTile.visible and (curTile.isCity or curTile.isGeneral) and curTile.player >= 0 and self.turn % 2 == 0 and self.turn - curTile.lastSeen < 75):
 					curTile.army += 1
-				if (not curTile.isvisible() and curTile.player >= 0 and self.turn % 50 == 0):
+				if (not curTile.visible and curTile.player >= 0 and self.turn % 50 == 0):
 					curTile.army += 1
 				if curTile.player >= 0:
 					self.players[curTile.player].tiles.append(curTile)
@@ -426,11 +423,11 @@ class Map(object):
 
 def evaluateTileDiffs(tile, candidateTile):
 	#both visible
-	if (tile.isvisible() and candidateTile.isvisible()):
+	if (tile.visible and candidateTile.visible):
 		return evaluateDualVisibleTileDiffs(tile, candidateTile)
-	if (tile.isvisible() and not candidateTile.isvisible()):
+	if (tile.visible and not candidateTile.visible):
 		return evaluateMoveFromFog(tile, candidateTile)
-	if (not tile.isvisible()):
+	if (not tile.visible):
 		#print("evaluating fog island. friendlyCaptured: " + str(tile.delta.friendlyCaptured))
 		return evaluateIslandFogMove(tile, candidateTile)
 	return -100
@@ -457,7 +454,7 @@ def evaluateMoveFromFog(tile, candidateTile):
 
 def evaluateIslandFogMove(tile, candidateTile):
 	#print(str(tile.army) + " : " + str(candidateTile.army))
-	if ((candidateTile.isvisible() and tile.army + candidateTile.delta.armyDelta < -1 and candidateTile.player != -1)):
+	if ((candidateTile.visible and tile.army + candidateTile.delta.armyDelta < -1 and candidateTile.player != -1)):
 		tile.player = candidateTile.player
 		tile.delta.newOwner = candidateTile.player
 		tile.army = 0 - candidateTile.delta.armyDelta - tile.army
@@ -482,13 +479,11 @@ def evaluateSameOwnerMoves(tile, candidateTile):
 	return -100
 
 class TileDelta(object):
-	def __init__(self, x, y):
+	def __init__(self):
 		# Public Properties
-		self.x = x					# Integer X Coordinate
-		self.y = y					# Integer Y Coordinate
-
 		self.oldOwner = -1
 		self.newOwner = -1
+		self.gainedSight = False
 		self.lostSight = False
 		self.friendlyCaptured = False
 		self.armyDelta = 0
@@ -513,15 +508,7 @@ class Tile(object):
 		self.discoveredAsNeutral = False
 		self.lastSeen = -1
 		self.mountain = mountain
-		self.delta = TileDelta(x, y)
-		self.left = None
-		self.right = None
-		self.top = None
-		self.bottom = None
-		self.topLeft = None
-		self.topRight = None
-		self.bottomLeft = None
-		self.bottomRight = None
+		self.delta = TileDelta()
 		self.adjacents = []
 		self.moveable = []
 
@@ -557,19 +544,13 @@ class Tile(object):
 
 	def toString(self):
 		return "{},{}".format(self.x, self.y)	
-	
-	
-	def isvisible(self):
-		return self.visible
-
-	def ismountain(self):
-		return self.mountain
 
 	def isobstacle(self):
 		return (self.mountain or (not self.discovered and self.tile == TILE_OBSTACLE))
 	
 
-	def update(self, map, tile, army, isCity=False, isGeneral=False):
+	def update(self, map, tile, army, isCity=False, isGeneral=False, overridePlayer=None):
+
 		#if (self.tile < 0 or tile >= 0 or (tile < TILE_MOUNTAIN and self.tile == map.player_index)): # Remember Discovered Tiles
 		#	if (tile >= 0 and self.tile != tile):				
 		#		if (self.player != tile):
@@ -582,11 +563,13 @@ class Tile(object):
 		#		if (tile == TILE_MOUNTAIN):
 		#			self.mountain = True
 		
+		self.delta = TileDelta()
 		if (tile >= TILE_MOUNTAIN):
 			self.discovered = True
 			self.lastSeen = map.turn
-			self.visible = True
-		self.delta = TileDelta(self.x, self.y)
+			if not self.visible:
+				self.delta.gainedSight = True
+				self.visible = True
 		armyMovedHere = False
 		
 		self.delta.oldOwner = self.player
@@ -596,8 +579,8 @@ class Tile(object):
 		if (self.tile != tile): # tile changed
 			if (tile < TILE_MOUNTAIN and self.discovered): #lost sight of tile. 
 				self.delta.lostSight = True
-				self.lastSeen = map.turn - 1
 				self.visible = False
+				self.lastSeen = map.turn - 1
 				
 				if (self.player == map.player_index or self.player in map.teammates): 
 					# we lost the tile
@@ -613,10 +596,13 @@ class Tile(object):
 			self.tile = tile
 		
 		self.delta.newOwner = self.player
+		if overridePlayer != None:
+			self.delta.newOwner = overridePlayer
+			self.player = overridePlayer
 		
 			
 		
-		if ((army == 0 and self.isvisible()) or army > 0 and self.army != army): # Remember Discovered Armies
+		if (army == 0 and self.visible) or army > 0 and (self.army != army or self.delta.oldOwner != self.delta.newOwner): # Remember Discovered Armies
 			if (self.army == 0 or self.army - army > 1 or self.army - army < -1):
 				armyMovedHere = True
 			oldArmy = self.army
@@ -630,9 +616,11 @@ class Tile(object):
 		if isCity:
 			self.isCity = True
 			self.isGeneral = False
-			if self in map.cities:
-				map.cities.remove(self)
-			map.cities.append(self)
+			#if self in map.cities:
+			#	map.cities.remove(self)
+			#map.cities.append(self)
+			if not self in map.cities:
+				map.cities.append(self)
 			
 			#playerObj = map.players[self.player]
 

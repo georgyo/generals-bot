@@ -94,6 +94,10 @@ class Move(object):
 		self.source = source
 		self.dest = dest
 		self.move_half = move_half
+		self.army_moved = source.army - 1
+		if self.move_half:
+			self.army_moved = (source.army - 1) // 2
+		self.non_friendly = self.source.player != self.dest.player
 
 	def __gt__(self, other):
 		if (other == None):
