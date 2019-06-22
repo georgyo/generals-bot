@@ -841,7 +841,7 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 		if maxValue == None or newValue > maxValue:
 			foundDist = dist
 			if logResultValues:
-				logging.info("New max value: [{}]".format('], ['.join(str(x) for x in newValue)))
+				logging.info("Tile {} is new max value: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
 			maxValue = newValue
 			endNode = current
 		if dist > depthEvaluated:

@@ -327,6 +327,8 @@ class EklipZBot(object):
 		if self._map.turn - 1 in self.history.moveHistory:
 			lastMove = self.history.moveHistory[self._map.turn - 1][0]
 		self.armyTracker.scan(self._gen_distances, lastMove)
+		for path in self.armyTracker.fogPaths:
+			self.viewInfo.paths.appendleft(PathColorer(path, 255, 84, 0, 255, 30, 150))
 
 
 
@@ -3865,11 +3867,14 @@ class EklipZBot(object):
 					curScore += knowsWhereEnemyGeneralIsBonus
 
 				# target players with better economies first
-				curScore = curScore + player.tileCount + player.cityCount * 40 - player.standingArmy ** 0.9
+				curScore = curScore + player.cityCount * 20 - player.standingArmy
 
-				weAreWinningBonus = 80
 				if generalPlayer.standingArmy > player.standingArmy * 0.9:
-					curScore += weAreWinningBonus
+					# target players with better economies first more when we are winning
+					curScore = curScore + player.cityCount * 20
+					curScore += player.tileCount
+					# 30% bonus for winning
+					curScore *= 1.2
 
 				if (player.knowsKingLocation):
 					curScore += 100
