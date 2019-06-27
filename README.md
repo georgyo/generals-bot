@@ -19,6 +19,7 @@
 Powershell:
 
 . "C:\generals-bot\run-bot.ps1"
+
 run-bot -game 1v1, 1v1, 1v1, ffa, ffa -name "EklipZ_ai" -right #-noui
 
 Ask me questions in discord! @EklipZ#3166 https://discord.gg/tchBMdN
