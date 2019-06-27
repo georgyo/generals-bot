@@ -25,6 +25,7 @@
     <Content Include="MentalFramework.txt" />
     <Content Include="requirements.txt" />
     <Content Include="run-bot.ps1" />
+    <Content Include="sample.gif" />
     <Content Include="TODO.txt" />
   </ItemGroup>
   <ItemGroup>

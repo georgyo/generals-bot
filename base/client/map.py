@@ -58,6 +58,7 @@ class Map(object):
 		self.notify_city_found = []
 		self.notify_tile_discovered = []
 		self.notify_tile_revealed = []
+		self.notify_player_captures = []
 		
 		# First Game Data
 		self._applyUpdateDiff(data)
@@ -228,6 +229,8 @@ class Map(object):
 		#print("\n\n    ~~~~~~~~~\nPlayer captured: {} by {}\n    ~~~~~~~~~\n".format(capturer, capturee))
 		capturerIdx = self.get_id_from_username(capturer)
 		captureeIdx = self.get_id_from_username(capturee)
+		for handler in self.notify_player_captures:
+			handler(captureeIdx, capturerIdx)
 		self.ekBot.history.captured_player(self.turn, captureeIdx, capturerIdx)
 		print("\n\n    ~~~~~~~~~\nPlayer captured: {} ({}) by {} ({})\n    ~~~~~~~~~\n".format(capturee, captureeIdx, capturer, capturerIdx))
 		
@@ -366,7 +369,7 @@ class Map(object):
 							curTile.player = bestCandTile.player
 						curTile.delta.fromTile = bestCandTile
 						bestCandTile.delta.toTile = curTile
-				if (not curTile.visible and (curTile.isCity or curTile.isGeneral) and curTile.player >= 0 and self.turn % 2 == 0 and self.turn - curTile.lastSeen < 75):
+				if (not curTile.visible and (curTile.isCity or curTile.isGeneral) and curTile.player >= 0 and self.turn % 2 == 0):
 					curTile.army += 1
 				if (not curTile.visible and curTile.player >= 0 and self.turn % 50 == 0):
 					curTile.army += 1
@@ -446,6 +449,7 @@ def evaluateMoveFromFog(tile, candidateTile):
 	candidateDelta = candidateTile.army + tile.delta.armyDelta
 	if (candidateDelta >= 0 and candidateDelta <= 2):
 		candidateTile.army = 1
+		logging.info(" (evaluateMoveFromFog) candidateTile {} army to {}".format(candidateTile.toString(), candidateTile.army))
 		return 100
 	halfDelta = (candidateTile.army / 2) + tile.delta.armyDelta
 	if (halfDelta >= 0 and halfDelta <= 2):
@@ -459,12 +463,16 @@ def evaluateIslandFogMove(tile, candidateTile):
 		tile.delta.newOwner = candidateTile.player
 		tile.army = 0 - candidateTile.delta.armyDelta - tile.army
 		candidateTile.army = 1
+		logging.info(" (islandFog 1) tile {} army to {}".format(tile.toString(), tile.army))
+		logging.info(" (islandFog 1) candTile {} army to 1".format(candidateTile.toString()))
 		return 50
 	if (tile.army - candidateTile.army < -1 and candidateTile.player != -1):
 		tile.player = candidateTile.player
 		tile.delta.newOwner = candidateTile.player
 		tile.army = candidateTile.army - tile.army - 1
 		candidateTile.army = 1
+		logging.info(" (islandFog 2) tile {} army to {}".format(tile.toString(), tile.army))
+		logging.info(" (islandFog 2) candTile {} army to 1".format(candidateTile.toString()))
 		return 30
 	return -100
 
@@ -606,6 +614,7 @@ class Tile(object):
 			if (self.army == 0 or self.army - army > 1 or self.army - army < -1):
 				armyMovedHere = True
 			oldArmy = self.army
+			#logging.info("assigning tile {} with oldArmy {} new army {}?".format(self.toString(), oldArmy, army))
 			self.army = army
 			if (self.delta.oldOwner != self.delta.newOwner):
 				self.delta.armyDelta = 0 - (self.army + oldArmy)

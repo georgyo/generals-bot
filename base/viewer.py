@@ -490,7 +490,7 @@ class GeneralsViewer(object):
 
 	def draw_square(self, tile, width, R, G, B, alpha):
 		key = BLACK
-		color = (R,G,B)
+		color = (min(255,R),min(255,G),min(255,B))
 		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
 		# first, "erase" the surface by filling it with a color and
 		# setting this color as colorkey, so the surface is empty
@@ -510,7 +510,16 @@ class GeneralsViewer(object):
 		# after drawing the circle, we can set the 
 		# alpha value (transparency) of the surface
 		tile = army.tile
-		self.draw_square(tile, 1, R, G, B, alphaStart + 40)
+		(playerR, playerG, playerB) = WHITE
+		if army.player != army.tile.player:
+			(playerR, playerG, playerB) = PLAYER_COLORS[army.player]
+			playerR += 50
+			playerG += 50
+			playerB += 50
+			#playerR = (playerR + 256) // 2
+			#playerG = (playerG + 256) // 2
+			#playerB = (playerB + 256) // 2
+		self.draw_square(tile, 1, playerR, playerG, playerB, min(255, int(alphaStart * 1.3)))
 
 		self.draw_path(army.path, R, G, B, alphaStart, 0, 0)
 		
@@ -520,9 +529,10 @@ class GeneralsViewer(object):
 
 	def draw_armies(self):
 		for army in list(self._map.ekBot.armyTracker.armies.values()):
-			self.draw_army(army, 255, 255, 255, 120)
-		for army in list(self._map.ekBot.armyTracker.scrapped_armies):
-			self.draw_army(army, 200, 200, 200, 70)
+			if army.scrapped:
+				self.draw_army(army, 200, 200, 200, 70)
+			else:
+				self.draw_army(army, 255, 255, 255, 120)
 	
 	def draw_path(self, pathObject, R, G, B, alphaStart, alphaDec, alphaMin):
 		if pathObject == None:

@@ -625,7 +625,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	itr = 0
 	remainingTurns = turns
 	while valuePerTurnPath != None:
-		logging.info("Adding valuePerTurnPath (v/t {:.2f}): {}".format(valuePerTurnPath.value / valuePerTurnPath.length, valuePerTurnPath.toString()))
+		logging.info("Adding valuePerTurnPath (v/t {:.3f}): {}".format(valuePerTurnPath.value / valuePerTurnPath.length, valuePerTurnPath.toString()))
 		#if viewInfo:
 		#	newR = (startR + 50 * itr) % 255
 		#	newG = (startG - 30 * itr) % 255
@@ -689,7 +689,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 							preferNeutral = preferNeutral)
 	
 
-	logging.info("Concluded greedy-bfs-gather built from {} path segments. Duration: {:.2f}".format(itr, time.time() - startTime))
+	logging.info("Concluded greedy-bfs-gather built from {} path segments. Duration: {:.3f}".format(itr, time.time() - startTime))
 	return list(where(treeNodeLookup.values(), lambda treeNode: treeNode.fromTile == None))
 
 def get_tree_move(gathers, priorityFunc, valueFunc):
@@ -837,7 +837,9 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 			continue
 		if useGlobalVisitedSet:
 			globalVisitedSet.add(current)
-		newValue = valueFunc(current, prioVals)
+		newValue = valueFunc(current, prioVals)		
+		if logResultValues:
+			logging.info("Tile {} value?: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
 		if maxValue == None or newValue > maxValue:
 			foundDist = dist
 			if logResultValues:
@@ -858,7 +860,7 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 					continue
 				frontier.put((nextVal, dist, next, current))
 	if not noLog:
-		logging.info("BFS-DYNAMIC-MAX ITERATIONS {}, DURATION: {:.2f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+		logging.info("BFS-DYNAMIC-MAX ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
 		return None
 		
@@ -1044,7 +1046,7 @@ def bidirectional_breadth_first_dynamic(map, startTiles, goalFunc, maxTime = 0.2
 					continue
 				frontier.put((nextVal, newDist, next, current))
 
-	logging.info("BFS-FIND ITERATIONS {}, DURATION: {:.2f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+	logging.info("BFS-FIND ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
 		return None
 		
@@ -1169,7 +1171,7 @@ def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth 
 					visited[next.x][next.y][newDist] = (nextArmy, current)
 				frontier.appendleft((next, newDist, nextArmy, goalInc))
 
-	logging.info("BFS-FIND-QUEUE ITERATIONS {}, DURATION: {:.2f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+	logging.info("BFS-FIND-QUEUE ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
 		return None
 		
@@ -1254,7 +1256,7 @@ def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc =
 				newDist = dist + 1
 				frontier.appendleft((next, newDist))
 	if not noLog:
-		logging.info("Completed breadth_first_foreach. startTiles[0] {},{}: ITERATIONS {}, DURATION {:.2f}, DEPTH {}".format(startTiles[0].x, startTiles[0].y, iter, time.time() - start, depthEvaluated))
+		logging.info("Completed breadth_first_foreach. startTiles[0] {},{}: ITERATIONS {}, DURATION {:.3f}, DEPTH {}".format(startTiles[0].x, startTiles[0].y, iter, time.time() - start, depthEvaluated))
 
 
 
@@ -1318,5 +1320,5 @@ def solve_knapsack(items, capacity, weights, values):
 			# its value is deducted 
 			res = res - values[i - 1] 
 			w = w - weights[i - 1]
-	logging.info("knapsack completed on {} items for capacity {} finding value {} in Duration {:.2f}".format(n, capacity, K[n][capacity], time.time() - timeStart))
+	logging.info("knapsack completed on {} items for capacity {} finding value {} in Duration {:.3f}".format(n, capacity, K[n][capacity], time.time() - timeStart))
 	return (K[n][capacity], includedItems)
