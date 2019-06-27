@@ -1,6 +1,6 @@
 # Generals.io - Automated Client
 
-![Generals.IO Gameplay Image](https://puu.sh/DLskl/1ff5afa3ea.png "Generals.IO Gameplay Image")
+![Generals.IO Gameplay Image](./sample.gif "Generals.IO Gameplay Image")
 
 ## Synopsis
 
