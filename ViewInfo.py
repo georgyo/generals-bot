@@ -40,9 +40,10 @@ class ViewInfo(object):
 		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		self.bottomLeftGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		self.lastMoveDuration = 0.0
-
+		self.addlTimingsLineText = ""
 	
 	def turnInc(self):
+		self.addlTimingsLineText = ""
 		self.bottomRightGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		self.bottomLeftGridText = [[None for x in range(self.rows)] for y in range(self.cols)]
 		countHist = len(self.searchHistory)

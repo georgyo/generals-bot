@@ -145,6 +145,7 @@ class EklipZBot(object):
 		self.history = History()
 		self.timings = None
 		self.armyTracker = None
+		self.finishingExploration = True
 
 	def spawnWorkerThreads(self):
 		return
@@ -408,6 +409,7 @@ class EklipZBot(object):
 
 
 	def timing_gather(self, startTiles, negativeTiles = None, skipTiles = None):
+		self.finishingExploration = False
 		turnOffset = self._map.turn + self.timings.offsetTurns
 		turnCycleOffset = turnOffset % self.timings.cycleTurns
 		if (self._map.turn >= 50 and turnCycleOffset < self.timings.splitTurns and startTiles != None and len(startTiles) > 0):
@@ -895,18 +897,7 @@ class EklipZBot(object):
 		####
 		
 		# if ahead on economy, but not %30 ahead on army we should play defensively
-		defendEconomy = False
-		if self._map.turn >= 100:
-			econRatio = -0.15
-			armyRatio = -0.3
-			winningEcon = self.winning_on_economy(econRatio, 20)
-			winningArmy = self.winning_on_army(armyRatio)
-			defendEconomy = winningEcon and not winningArmy
-			if defendEconomy:
-				logging.info("\n\nDEFENDING ECONOMY! self.winning_on_economy({}) {}, self.winning_on_army({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy))
-			else:
-				logging.info("\n\nNOT DEFENDING ECONOMY? self.winning_on_economy({}) {}, self.winning_on_army({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy))
-
+		defendEconomy = self.should_defend_economy()
 
 		dangerTiles = self.get_danger_tiles()
 		if (len(dangerTiles) > 0 and not self.allIn):
@@ -955,18 +946,19 @@ class EklipZBot(object):
 				logging.info("returning capture_cities gatherMove {}".format(gatherMove.toString()))
 				return gatherMove
 			
-		undiscNeg = negativeTiles.copy()				
-		for city in self._map.players[self.general.player].cities:
-			undiscNeg.add(city)
-		halfTargetPath = self.target_player_gather_path.get_subsegment(self.target_player_gather_path.length / 2)
-		undiscNeg.add(self.general)
-		for tile in halfTargetPath.tileList:
-			undiscNeg.add(tile)
-		path = self.explore_target_player_undiscovered(undiscNeg)	
-		if (path != None):
-			pruned = self.get_value_per_turn_subsegment(path, 0.9)
-			self.info("LARGE: found depth {} dest bfs kill on target undisc (pruned to {})\n{}".format(path.length, pruned.length, path.toString()))
-			paths.append(pruned)
+		if self.finishingExploration:
+			undiscNeg = negativeTiles.copy()				
+			for city in self._map.players[self.general.player].cities:
+				undiscNeg.add(city)
+			halfTargetPath = self.target_player_gather_path.get_subsegment(self.target_player_gather_path.length / 2)
+			undiscNeg.add(self.general)
+			for tile in halfTargetPath.tileList:
+				undiscNeg.add(tile)
+			path = self.explore_target_player_undiscovered(undiscNeg)	
+			if (path != None):
+				pruned = self.get_value_per_turn_subsegment(path, 0.9)
+				self.info("LARGE: found depth {} dest bfs kill on target undisc (pruned to {})\n{}".format(path.length, pruned.length, path.toString()))
+				paths.append(pruned)
 			
 
 				
@@ -1117,7 +1109,8 @@ class EklipZBot(object):
 			player = self._map.players[self.general.player]
 			modVal = 0
 			enemyGather = False
-			if not self.winning_on_economy(byExtraRatio = 0, cityValue = 0) and self.winning_on_army(-0.05):
+			if not self._map.remainingPlayers > 2 and not self.winning_on_economy(byRatio = 1, cityValue = 0) and self.winning_on_army(0.95):
+				logging.info("Forced enemyGather to true due to NOT winning_on_economy and winning_on_army")
 				enemyGather = True
 			neutralGather = len(targets) <= 2
 			turn = self._map.turn
@@ -1897,8 +1890,33 @@ class EklipZBot(object):
 		# logging.info("{},{} ({}  {})".format(thisNode.tile.x, thisNode.tile.y, thisNode.value, thisNode.gatherTurns))
 		return thisNode
 	
+	def get_tree_move_non_city_leaf_count(self, gathers):
+		# fuck it, do it recursively i'm too tired for this
+		count = 0
+		for gather in gathers:
+			foundCity, countNonCityLeaves = self._get_tree_move_non_city_leaf_count_recurse(gather)
+			count += countNonCityLeaves
+		return count
+
+	def _get_tree_move_non_city_leaf_count_recurse(self, gather):
+		count = 0
+		thisNodeFoundCity = False
+		for child in gather.children:
+			foundCity, countNonCityLeaves = self._get_tree_move_non_city_leaf_count_recurse(child)
+			logging.info("child {} foundCity {} countNonCityLeaves {}".format(child.tile.toString(), foundCity, countNonCityLeaves))
+			count += countNonCityLeaves
+			if foundCity:
+				thisNodeFoundCity = True
+		if gather.tile.player == self.general.player and (gather.tile.isCity or gather.tile.isGeneral):
+			thisNodeFoundCity = True
+		if not thisNodeFoundCity:
+			count += 1
+		return (thisNodeFoundCity, count)
+
+	
 	def get_tree_move_default(self, gathers, priorityFunc = None, valueFunc = None):
-		logging.info("G E T T R E E M O V E D E F A U L T ! ! !")
+		nonCityLeafCount = self.get_tree_move_non_city_leaf_count(gathers)
+		logging.info("G E T T R E E M O V E D E F A U L T ! ! ! nonCityLeafCount {}".format(nonCityLeafCount))
 		if priorityFunc == None:
 			player = self._map.players[self.general.player]
 			# default priority func, gathers based on cityCount then distance from general
@@ -1929,7 +1947,7 @@ class EklipZBot(object):
 					negArmy += nextTile.army
 				return (cityCount, distToGen, negArmy)
 			
-			if player.cityCount > 3:
+			if player.cityCount > 3 or nonCityLeafCount < 5:
 				priorityFunc = default_high_cities_func
 			else:
 				priorityFunc = default_priority_func
@@ -2355,8 +2373,9 @@ class EklipZBot(object):
 			enemyPos = self.target_player_gather_path.tail.tile
 			myPos = self.general
 
+			# arrays to allow assignment from inside the lambda. Python is weird
 			idealCity = [None]
-			idealCityClosenessRating = [-15]
+			idealCityClosenessRating = [0]
 
 			def citySearcher(tile):
 				if tile.isCity and tile.player == -1:
@@ -2370,6 +2389,7 @@ class EklipZBot(object):
 			if idealCity[0] != None:
 				logging.info("Found a neutral city path, closest to me and furthest from enemy. Chose city {} with rating {}".format(idealCity[0].toString(), idealCityClosenessRating[0]))
 				# moveable hack is stupid. Neutral cities are being avoided? So we can't target one? Lol?
+				#path = self.get_path_to_target(idealCity[0])
 				path = self.get_path_to_targets(idealCity[0].moveable)
 				if path != None:
 					path.add_next(idealCity[0])
@@ -2764,6 +2784,27 @@ class EklipZBot(object):
 			else:
 				logging.info("\n~~~Allowed otherwise-illegal king move to attack the dangerous tile at {},{} with value {}.".format(dangerTile.x, dangerTile.y, dangerTile.army))
 		return safeSoFar
+
+	def should_defend_economy(self):
+		if self._map.remainingPlayers > 2:
+			return False
+		defendEconomy = False
+		winningText = "first 100 still"
+		if self._map.turn >= 100:
+			econRatio = 1.25
+			armyRatio = 1.3
+			winningEcon = self.winning_on_economy(econRatio, 20)
+			winningArmy = self.winning_on_army(armyRatio)
+			defendEconomy = winningEcon and not winningArmy
+			if defendEconomy:
+				logging.info("\n\nDEFENDING ECONOMY! self.winning_on_economy({}) {}, self.winning_on_army({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy))
+				winningText = "DEF: woe({}) {}, woa({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy)
+			else:
+				logging.info("\n\nNOT DEFENDING ECONOMY? self.winning_on_economy({}) {}, self.winning_on_army({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy))
+				winningText = "     woe({}) {}, woa({}) {}".format(econRatio, winningEcon, armyRatio, winningArmy)
+		self.viewInfo.addlTimingsLineText = winningText
+		return defendEconomy
+
 			
 	def get_danger_tiles(self, move_half=False):
 		general = self._map.generals[self._map.player_index]
@@ -2904,20 +2945,20 @@ class EklipZBot(object):
 		return moves
 	
 
-	def winning_on_economy(self, byExtraRatio = 0, cityValue = 30, playerIndex = -2):
+	def winning_on_economy(self, byRatio = 1, cityValue = 30, playerIndex = -2):
 		if playerIndex == -2:
 			playerIndex = self.targetPlayer
 		if playerIndex == -1:
 			return True
 		targetPlayer = self._map.players[playerIndex]
-		generalPlayer = self._map.players[playerIndex]
+		generalPlayer = self._map.players[self.general.player]
 
-		playerEconValue = generalPlayer.tileCount * (1 + byExtraRatio) + generalPlayer.cityCount * cityValue
-		oppEconValue = targetPlayer.tileCount + targetPlayer.cityCount * cityValue
+		playerEconValue = (generalPlayer.tileCount + generalPlayer.cityCount * cityValue)
+		oppEconValue = (targetPlayer.tileCount + targetPlayer.cityCount * cityValue) * byRatio
 		return playerEconValue >= oppEconValue
 
 
-	def winning_on_army(self, byExtraRatio = 0, useFullArmy = False, playerIndex = -2):
+	def winning_on_army(self, byRatio = 1, useFullArmy = False, playerIndex = -2):
 		if playerIndex == -2:
 			playerIndex = self.targetPlayer
 		if playerIndex == -1:
@@ -2930,8 +2971,8 @@ class EklipZBot(object):
 		if useFullArmy:
 			targetArmy = targetPlayer.score
 			playerArmy = generalPlayer.score
-		winningOnArmy = playerArmy * (1 + byExtraRatio) >= targetArmy
-		logging.info("winning_on_army: playerArmy {} (weighted {:.1f}) >= targetArmy {} ?  {}".format(playerArmy, playerArmy * (1 + byExtraRatio), targetArmy, winningOnArmy))
+		winningOnArmy = playerArmy >= targetArmy * byRatio
+		logging.info("winning_on_army: playerArmy {} >= targetArmy {} (weighted {:.1f}) ?  {}".format(playerArmy, targetArmy, targetArmy * byRatio, winningOnArmy))
 		return winningOnArmy
 
 
@@ -3273,6 +3314,8 @@ class EklipZBot(object):
 
 
 	def get_optimal_expansion(self, turns, negativeTiles = None):
+		# allow exploration again
+		self.finishingExploration = True
 		logging.info("\n\nAttempting Optimal Expansion (tm) for turns {}:\n".format(turns))
 		startTime = time.time()
 		generalPlayer = self._map.players[self.general.player]

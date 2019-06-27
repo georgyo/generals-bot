@@ -650,7 +650,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 		else:
 			currentTreeNode = TreeNode(node.tile, None, distance)
 			currentTreeNode.gatherTurns = 1
-		runningValue = valuePerTurnPath.value
+		runningValue = valuePerTurnPath.value - node.tile.army
 		currentTreeNode.value += runningValue
 		runningValue -= node.tile.army
 		treeNodeLookup[node.tile] = currentTreeNode

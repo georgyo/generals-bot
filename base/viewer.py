@@ -175,7 +175,7 @@ class GeneralsViewer(object):
 			self._screen.blit(self._font.render(self._map.ekBot.viewInfo.infoText, True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT))
 			if self._map.ekBot.timings:
 				timings = self._map.ekBot.timings
-				self._screen.blit(self._font.render("Timings: {} ({})   - {}{}".format(timings.toString(), (self._map.turn + timings.offsetTurns) % timings.cycleTurns, allInText, self._map.ekBot.all_in_counter), True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT + 15))
+				self._screen.blit(self._font.render("Timings: {} ({})   - {}{}       {}".format(timings.toString(), (self._map.turn + timings.offsetTurns) % timings.cycleTurns, allInText, self._map.ekBot.all_in_counter, self._map.ekBot.viewInfo.addlTimingsLineText), True, WHITE), (170, self._window_size[1] - INFO_ROW_HEIGHT + 15))
 		
 			# Draw Scores
 			pos_top = self._window_size[1] - INFO_ROW_HEIGHT - SCORES_ROW_HEIGHT
