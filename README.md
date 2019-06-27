@@ -6,6 +6,7 @@
 
 [Generals.io](http://generals.io) is a multiplayer web game where the goal is to protect your general and capture the enemy generals.  
 
+This is EklipZ_ai on the bot server, and Human.exe on the human server.
 
 
 ## Setup
