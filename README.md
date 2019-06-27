@@ -17,6 +17,7 @@
 (might need to tweak some hardcoded paths.... This was only ever intended for my use and opensourced later)
 
 Powershell:
+
 . "C:\generals-bot\run-bot.ps1"
 run-bot -game 1v1, 1v1, 1v1, ffa, ffa -name "EklipZ_ai" -right #-noui
 
@@ -27,4 +28,5 @@ DO NOT run this on the human servers when it is not working. The reason bots wer
 ## Contributors
 
 @harrischristiansen [HarrisChristiansen.com](http://www.harrischristiansen.com) (harris@harrischristiansen.com)  Original source
+
 @EklipZgit (me) forked and wrote the bot portion from scratch for EklipZ_ai AKA Human.exe
