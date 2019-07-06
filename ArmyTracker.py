@@ -92,6 +92,8 @@ class ArmyTracker(object):
 		self.lastMove = None
 		self.track_threshold = 10
 		self.fogPaths = []
+		self.emergenceLocationMap = [[[0 for x in range(self.map.rows)] for y in range(self.map.cols)] for z in range(len(self.map.players))]
+		self.notify_unresolved_army_emerged = []
 
 	# distMap used to determine how to move armies under fog
 	def scan(self, distMap, lastMove):
@@ -170,6 +172,8 @@ class ArmyTracker(object):
 				continue
 
 			lostVision = (army.visible and not army.tile.visible)
+			# lostVision breaking stuff?
+			lostVision = False
 			if lostVision or (army.value + 1 + expectedDelta != army.tile.army or army.tile.player != army.player):
 				# army probably moved. Check adjacents for the army
 				armyTileDelta = 0 - army.tile.delta.armyDelta - expectedDelta
@@ -431,18 +435,30 @@ class ArmyTracker(object):
 			if (tileArmy == None or tileArmy.scrapped) and tile.player != -1 and (playerLargest[tile.player] == tile or tile.army >= self.track_threshold or tileNewlyMovedByEnemy):
 				logging.info("{} Discovered as Army! (tile.army {}, tile.delta {}) Determining if came from fog".format(tile.toString(), tile.army, tile.delta.armyDelta))
 				resolvedFogSourceArmy = False
+				resolvedReasonableFogValuePath = False
 				if abs(tile.delta.armyDelta) > tile.army / 2:
 					# maybe this came out of the fog?
 					sourceFogArmyPath = self.find_fog_source(tile)
 					if sourceFogArmyPath != None:
 						self.fogPaths.append(sourceFogArmyPath.get_reversed())
 						resolvedFogSourceArmy = True
+						minRatio = 1.7
+						isGoodResolution = sourceFogArmyPath.value > tile.army * minRatio
+						logging.info("sourceFogArmyPath.value ({}) > tile.army * {} ({:.1f}) : {}".format(sourceFogArmyPath.value, minRatio, tile.army * minRatio, isGoodResolution))
+						if not isGoodResolution:
+							armyEmergenceValue = abs(tile.delta.armyDelta)
+							logging.info("Adding emergence for player {} tile {} value {}".format(tile.player, tile.toString(), armyEmergenceValue))
+							self.emergenceLocationMap[tile.player][tile.x][tile.y] += armyEmergenceValue
+							for handler in self.notify_unresolved_army_emerged:
+								handler(tile)
 						self.resolve_fog_emergence(sourceFogArmyPath, tile)
 				if not resolvedFogSourceArmy:
 					# then tile is a new army.
 					army = Army(tile)
 					self.armies[tile] = army
-
+					self.emergenceLocationMap[tile.player][tile.x][tile.y] += tile.army
+					for handler in self.notify_unresolved_army_emerged:
+						handler(tile)
 				# if tile WAS bordered by fog find the closest fog army and remove it (not tile.visible or tile.delta.gainedSight)
 
 	def find_fog_source(self, tile):
@@ -492,6 +508,7 @@ class ArmyTracker(object):
 			return nextTile.visible or turnsNegative > 1 or consecutiveUndiscovered > 7 or dist > 15
 		inputTiles = {}
 		delta = abs(tile.delta.armyDelta)
+		logging.info("Looking for fog army path of value {} to tile {}".format(delta, tile.toString()))
 		# we want the path to get army up to 0, so start it at the negative delta (positive)
 		inputTiles[tile] = ((0, delta, 0, 0), 0)
 

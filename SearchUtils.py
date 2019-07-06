@@ -216,7 +216,7 @@ def _shortestPathHeur(goal, cur):
 
 
 
-def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restrictionEvalFuncs = None, ignoreStartTile = False):
+def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restrictionEvalFuncs = None, ignoreStartTile = False, requireExtraArmy = 0):
 	frontier = PriorityQueue()
 	came_from = {}
 	cost_so_far = {}
@@ -227,6 +227,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 			startArmy = start.army
 			if ignoreStartTile:
 				startArmy = 0
+			startArmy -= requireExtraArmy
 			#if (start.player == map.player_index and start.isGeneral and map.turn > GENERAL_HALF_TURN):
 			#	startArmy = start.army / 2
 			cost_so_far[start] = (startDist, 0 - startArmy)	
@@ -238,6 +239,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 			startArmy = start.army
 			if ignoreStartTile:
 				startArmy = 0
+			startArmy -= requireExtraArmy
 			#if (start.player == map.player_index and start.isGeneral and map.turn > GENERAL_HALF_TURN):
 			#	startArmy = start.army / 2
 			cost_so_far[start] = (0, 0 - startArmy)	
@@ -252,8 +254,8 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 
 	while not frontier.empty():
 		iter += 1
-		if (iter & 32 == 0 and time.time() - start > maxTime):
-			logging.info("breaking early")
+		if (iter & 256 == 0 and time.time() - start > maxTime):
+			logging.info("breaking A* early")
 			break
 		prio, current = frontier.get()
 		x = current.x
@@ -269,7 +271,6 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 				foundDist = dist
 				foundArmy = army
 				foundGoal = True
-				logging.info("A* found goal, breaking")
 				break
 			else: # skip paths that go through king, that wouldn't make sense
 				#logging.info("a* path went through king")
@@ -297,7 +298,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 					nextArmy -= (next.army + inc)
 				if (next.isCity and next.player == -1):
 					nextArmy -= next.army * 2
-				if (nextArmy <= 0):
+				if (nextArmy <= 0 and army > 0): # prune out paths that go negative after initially going positive
 					#logging.info("a* next army <= 0: {}".format(nextArmy))
 					continue
 				new_cost = (dist + 1, (0 - nextArmy))

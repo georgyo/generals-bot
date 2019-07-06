@@ -130,17 +130,47 @@ function Run-BotOnce {
 
 function Run-SoraAI {
     Param(
-        $name, 
-        [string[]]
-        $game, 
-        [switch]$public, 
-        [switch]$right, 
-        $privateGame, 
-        [switch]$noui,
-		[switch]$publicLobby
+        $game = @('1v1', '1v1', 'ffa')
     )
-
+	while ($true)
+	{
+		foreach ($g in $game)
+		{
+			run-botonce -game $g -name "[Bot] Sora_ai_ek" -userID "EKSORA" -path "C:\Sora_AI\run_bot.py" -nolog
+		}
+	}
 }
+
+
+function Run-Blob {
+    Param(
+        $game = @('1v1', '1v1', 'ffa')
+    )
+	while ($true)
+	{
+		foreach ($g in $game)
+		{
+			run-botonce -game $g -name "PurdBlob" -path "C:\Users\EklipZ-2\Documents\GitHub\generals-bot\bot_blob.py" -nolog -noui
+		}
+	}
+}
+
+
+
+function Run-Path {
+    Param(
+        $game = @('1v1', '1v1', 'ffa')
+    )
+	while ($true)
+	{
+		foreach ($g in $game)
+		{
+			run-botonce -game $g -name "PurdPath" -path "C:\Users\EklipZ-2\Documents\GitHub\generals-bot\bot_path_collect.py" -nolog -noui
+		}
+	}
+}
+
+
 
 
 function Run-Bot { 

@@ -50,6 +50,7 @@ class Generals(object):
 		self._start_data = {}
 		self.already_good_lucked = False
 		self.chatQueued = []
+		self.result = False
 
 
 		if not public_server and "[Bot]" not in username:
@@ -321,6 +322,7 @@ class Generals(object):
 
 	def _make_result(self, update, data):
 		result = self._map.updateResult(update)
+		self.result = result
 		self._terminate()
 		return result
 
@@ -331,7 +333,7 @@ class Generals(object):
 
 
 	def _terminate(self):		
-		logging.info("\n\n        IN TERMINATE {}   \n\n".format(self._start_data['replay_id']))
+		logging.info("\n\n        IN TERMINATE {}  (won? {})   \n\n".format(self._start_data['replay_id'], self._map.result))
 		with self._lock:
 			#self._send(["leave_game"])
 			#time.sleep(1)
