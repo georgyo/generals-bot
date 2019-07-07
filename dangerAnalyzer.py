@@ -86,7 +86,8 @@ class DangerAnalyzer(object):
 		return ThreatObj(curThreat.length, curThreat.value, curThreat, ThreatType.Vision)
 	
 	def getFastestThreat(self, general, depth):
-		logging.info("fastest threat analyzer: depth {}".format(depth))
+		startTime = time.time()
+		logging.info("------\nfastest threat analyzer: depth {}".format(depth))
 		curThreat = None
 		saveTile = None
 		for player in self.map.players:
@@ -103,6 +104,7 @@ class DangerAnalyzer(object):
 						logging.info("saveTile blocks path to our king: {},{}".format(saveTile.x, saveTile.y))
 					logging.info("dest BFS found KILL against our general:\n{}".format(path.toString()))
 					curThreat = path
+		logging.info("fastest threat analyzer took {:.3f}".format(time.time() - startTime))
 		if (curThreat == None):
 			return None
 		return ThreatObj(curThreat.length - 1, curThreat.value, curThreat, ThreatType.Kill, saveTile)

@@ -216,7 +216,7 @@ def _shortestPathHeur(goal, cur):
 
 
 
-def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restrictionEvalFuncs = None, ignoreStartTile = False, requireExtraArmy = 0):
+def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restrictionEvalFuncs = None, ignoreStartTile = False, requireExtraArmy = 0, negativeTiles = None):
 	frontier = PriorityQueue()
 	came_from = {}
 	cost_so_far = {}
@@ -292,12 +292,13 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 					
 				#new_cost = cost_so_far[current] + graph.cost(current, next)
 				nextArmy = army - 1
-				if (startTiles[0].player == next.player):
-					nextArmy += next.army + inc
-				else:
-					nextArmy -= (next.army + inc)
-				if (next.isCity and next.player == -1):
-					nextArmy -= next.army * 2
+				if negativeTiles == None or next not in negativeTiles:
+					if (startTiles[0].player == next.player):
+						nextArmy += next.army + inc
+					else:
+						nextArmy -= (next.army + inc)
+					if (next.isCity and next.player == -1):
+						nextArmy -= next.army * 2
 				if (nextArmy <= 0 and army > 0): # prune out paths that go negative after initially going positive
 					#logging.info("a* next army <= 0: {}".format(nextArmy))
 					continue
@@ -514,7 +515,8 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 					   ignoreStartTile = False,
 					   incrementBackward = False,
 					   preferNeutral = False,
-					   viewInfo = None):
+					   viewInfo = None,
+					   distPriorityMap = None):
 	'''
 	startTiles is list of tiles that will be weighted with baseCaseFunc, OR dict (startPriorityObject, distance) = startTiles[tile]
 	valueFunc is (currentTile, priorityObject) -> POSITIVELY weighted value object

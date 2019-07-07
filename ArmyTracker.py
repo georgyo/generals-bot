@@ -448,18 +448,29 @@ class ArmyTracker(object):
 						if not isGoodResolution:
 							armyEmergenceValue = abs(tile.delta.armyDelta)
 							logging.info("Adding emergence for player {} tile {} value {}".format(tile.player, tile.toString(), armyEmergenceValue))
-							self.emergenceLocationMap[tile.player][tile.x][tile.y] += armyEmergenceValue
-							for handler in self.notify_unresolved_army_emerged:
-								handler(tile)
+							self.new_army_emerged(tile, armyEmergenceValue)
 						self.resolve_fog_emergence(sourceFogArmyPath, tile)
 				if not resolvedFogSourceArmy:
 					# then tile is a new army.
 					army = Army(tile)
 					self.armies[tile] = army
-					self.emergenceLocationMap[tile.player][tile.x][tile.y] += tile.army
-					for handler in self.notify_unresolved_army_emerged:
-						handler(tile)
+					self.new_army_emerged(tile, tile.army - 1)
 				# if tile WAS bordered by fog find the closest fog army and remove it (not tile.visible or tile.delta.gainedSight)
+
+
+	def new_army_emerged(self, emergedTile, armyEmergenceValue):
+		logging.info("running new_army_emerged for tile {}".format(emergedTile.toString()))
+		distance = 4
+		def foreachFunc(tile): 
+			self.emergenceLocationMap[emergedTile.player][tile.x][tile.y] += armyEmergenceValue
+
+		negativeLambda = lambda tile: tile.discovered
+		skipFunc = lambda tile: tile.visible and tile != emergedTile
+		breadth_first_foreach(self.map, [emergedTile], distance, foreachFunc, negativeLambda, skipFunc)
+
+		#self.emergenceLocationMap[emergedTile.player][emergedTile.x][emergedTile.y] += armyEmergenceValue
+		for handler in self.notify_unresolved_army_emerged:
+			handler(emergedTile)
 
 	def find_fog_source(self, tile):
 		if len(where(tile.moveable, lambda adj: not adj.isobstacle() and not adj.visible)) == 0:
