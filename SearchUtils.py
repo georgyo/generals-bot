@@ -522,8 +522,6 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	valueFunc is (currentTile, priorityObject) -> POSITIVELY weighted value object
 	priorityFunc is (nextTile, currentPriorityobject) -> nextPriorityObject NEGATIVELY weighted
 	'''
-	# because something?
-	turns += 1
 	startTime = time.time()
 	if negativeTiles != None:
 		negativeTiles = negativeTiles.copy()

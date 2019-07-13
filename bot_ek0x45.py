@@ -2452,7 +2452,7 @@ class EklipZBot(object):
 				if player.tileCount > 125:
 					gatherDuration = 50
 
-				gatherDist = 1 + (gatherDuration - self._map.turn % gatherDuration)
+				gatherDist = (gatherDuration - self._map.turn % gatherDuration)
 				negativeTiles = negativeTiles.copy()
 				#negativeTiles.add(self.general)
 				logging.info("self.gather_to_target_tile gatherDist {} - targetArmyGather {}".format(gatherDist, targetArmyGather))
@@ -2852,7 +2852,7 @@ class EklipZBot(object):
 				continue
 			#give up if we're massively losing
 			if self._map.remainingPlayers == 2:
-				if self._map.turn > 150 and player.tileCount + 35 * player.cityCount > generalPlayer.tileCount * 1.35 + 5 + 35 * generalPlayer.cityCount and player.standingArmy > generalPlayer.standingArmy * 1.25 + 5:
+				if self._map.turn > 150 and player.tileCount + 10 * player.cityCount > generalPlayer.tileCount * 1.35 + 5 + 10 * generalPlayer.cityCount and player.standingArmy > generalPlayer.standingArmy * 1.25 + 5:
 					self.allIn = True
 					self.all_in_counter = 200
 				elif self._map.turn > 50 and player.tileCount + 35 * player.cityCount > generalPlayer.tileCount * 1.1 + (37 * generalPlayer.cityCount):
