@@ -469,7 +469,12 @@ class GeneralsViewer(object):
 							if (text == -1000000): #then was skipped
 								textVal = "x"		
 							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
-							
+						elif self._map.ekBot.targetPlayer != -1:
+							val = self._map.ekBot.armyTracker.emergenceLocationMap[self._map.ekBot.targetPlayer][column][row]
+							if val != 0:
+								textVal = "{:.0f}".format(val)
+								self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2.5 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
+
 					if (self._map.ekBot.viewInfo.bottomLeftGridText != None):
 						text = self._map.ekBot.viewInfo.bottomLeftGridText[column][row]
 						if (text != None):
@@ -522,6 +527,9 @@ class GeneralsViewer(object):
 		self.draw_square(tile, 1, playerR, playerG, playerB, min(255, int(alphaStart * 1.3)))
 
 		self.draw_path(army.path, R, G, B, alphaStart, 0, 0)
+
+		if army.expectedPath != None:
+			self.draw_path(army.expectedPath, 255, 0, 0, 150, 10, 100)
 		
 		pos_left = (CELL_MARGIN + CELL_WIDTH) * tile.x + CELL_MARGIN
 		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN

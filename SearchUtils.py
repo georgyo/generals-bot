@@ -553,26 +553,32 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	if valueFunc == None:
 		logging.info("Using default valueFunc")
 		def default_value_func_max_gathered_per_turn(currentTile, priorityObject):
-			(realDist, negNeutCount, negArmySum, dist, xSum, ySum) = priorityObject
-			return (-1 * (negArmySum / (max(1, realDist))), 0-negNeutCount, 0-negArmySum, 0-dist, 0-xSum, 0-ySum)
+			(realDist, negArmySum, negDistanceSum, dist, xSum, ySum) = priorityObject
+			value = -1 * (negArmySum / (max(1, realDist)))
+			return (value, 0-negDistanceSum, 0-negArmySum, realDist, 0-xSum, 0-ySum)
 		valueFunc = default_value_func_max_gathered_per_turn
 
 		
 	if priorityFunc == None:
 		logging.info("Using default priorityFunc")
 		def default_priority_func(nextTile, currentPriorityObject):
-			(realDist, negNeutCount, negArmySum, dist, xSum, ySum) = currentPriorityObject
+			(realDist, negArmySum, negDistanceSum, dist, xSum, ySum) = currentPriorityObject
 			negArmySum += 1
 			if (nextTile not in negativeTiles):
 				if (searchingPlayer == nextTile.player):
 					negArmySum -= nextTile.army
+					if nextTile.isCity:
+						negArmySum -= turns // 3
 				else:
 					negArmySum += nextTile.army
-			if nextTile.player != searchingPlayer and not (nextTile.player == -1 and nextTile.isCity):
-				negNeutCount -= 1
+			#if nextTile.player != searchingPlayer and not (nextTile.player == -1 and nextTile.isCity):
+			#	negDistanceSum -= 1
+			# hacks us prioritizing further away tiles
+			if distPriorityMap != None:
+				negDistanceSum -= distPriorityMap[nextTile.x][nextTile.y]
 				
-			#logging.info("prio: nextTile {} got realDist {}, negNextArmy {}, negNeutCount {}, newDist {}, xSum {}, ySum {}".format(nextTile.toString(), realDist + 1, 0-nextArmy, negNeutCount, dist + 1, xSum + nextTile.x, ySum + nextTile.y))
-			return (realDist + 1, negNeutCount, negArmySum, dist + 1, xSum + nextTile.x, ySum + nextTile.y)
+			#logging.info("prio: nextTile {} got realDist {}, negNextArmy {}, negDistanceSum {}, newDist {}, xSum {}, ySum {}".format(nextTile.toString(), realDist + 1, 0-nextArmy, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y))
+			return (realDist + 1, negArmySum, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y)
 		priorityFunc = default_priority_func
 		
 
@@ -586,7 +592,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 				startArmy = tile.army
 			
 			logging.info("tile {} got base case startArmy {}, startingDist {}".format(tile.toString(), startArmy, startingDist))
-			return (0, 0, startArmy, startingDist, tile.x, tile.y)
+			return (0, startArmy, 0, startingDist, tile.x, tile.y)
 		baseCaseFunc = default_base_case_func
 		
 
@@ -618,7 +624,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 						skipFunc = skipFunc,
 						ignoreStartTile = ignoreStartTile,
 						incrementBackward = incrementBackward,
-						preferNeutral = preferNeutral)
+						preferNeutral = preferNeutral, logResultValues = True)
 	
 	if valuePerTurnPath == None:
 		logging.info("Yo, no initial valuePerTurnPath??????? :(")
@@ -628,7 +634,10 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	itr = 0
 	remainingTurns = turns
 	while valuePerTurnPath != None:
-		logging.info("Adding valuePerTurnPath (v/t {:.3f}): {}".format(valuePerTurnPath.value / valuePerTurnPath.length, valuePerTurnPath.toString()))
+		if valuePerTurnPath.tail.tile.army <= 1 or valuePerTurnPath.tail.tile.player != searchingPlayer:
+			logging.info("TERMINATING greedy-bfs-gather PATH BUILDING DUE TO TAIL TILE {} THAT WAS < 1 OR NOT OWNED BY US. PATH: {}".format(valuePerTurnPath.tail.tile.toString(), valuePerTurnPath.toString()))
+			break
+		logging.info("Adding valuePerTurnPath (v/t {:.3f}): {}".format((valuePerTurnPath.value - valuePerTurnPath.start.tile.army + 1) / valuePerTurnPath.length, valuePerTurnPath.toString()))
 		#if viewInfo:
 		#	newR = (startR + 50 * itr) % 255
 		#	newG = (startG - 30 * itr) % 255
@@ -666,7 +675,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 			nextPrioObj = baseCaseFunc(node.tile, newDist)
 			startTilesDict[node.tile] = (nextPrioObj, newDist)
 			negativeTiles.add(node.tile)
-			logging.info("Including tile {},{} in startTilesDict at distance {}".format(node.tile.x, node.tile.y, newDist))
+			logging.info("Including tile {},{} in startTilesDict at newDist {}  (distance {} addlDist {})".format(node.tile.x, node.tile.y, newDist, distance, addlDist))
 			if viewInfo:
 				viewInfo.bottomRightGridText[node.tile.x][node.tile.y] = newDist
 			nextTreeNode = TreeNode(node.tile, currentTreeNode.tile, newDist)
@@ -689,7 +698,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 							skipFunc = skipFunc,
 							ignoreStartTile = ignoreStartTile,
 							incrementBackward = incrementBackward,
-							preferNeutral = preferNeutral)
+							preferNeutral = preferNeutral, logResultValues = True)
 	
 
 	logging.info("Concluded greedy-bfs-gather built from {} path segments. Duration: {:.3f}".format(itr, time.time() - startTime))
@@ -825,6 +834,7 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 	endNode = None
 	depthEvaluated = 0
 	maxValue = None
+	parentString = ""
 	while not frontier.empty():
 		iter += 1
 		if (iter % 1000 == 0 and time.time() - start > maxTime):
@@ -841,18 +851,25 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 		if useGlobalVisitedSet:
 			globalVisitedSet.add(current)
 		newValue = valueFunc(current, prioVals)		
-		if logResultValues:
-			logging.info("Tile {} value?: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
+		#if logResultValues:
+		#	logging.info("Tile {} value?: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
+		#if logResultValues:
+		#	if parent != None:
+		#		parentString = parent.toString()
+		#	else:
+		#		parentString = "None"
 		if maxValue == None or newValue > maxValue:
 			foundDist = dist
 			if logResultValues:
-				logging.info("Tile {} is new max value: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
+				logging.info("Tile {} from {} is new max value: [{}]  (dist {})".format(current.toString(), parentString, '], ['.join(str(x) for x in newValue), dist))
 			maxValue = newValue
 			endNode = current
+		#elif logResultValues:			
+		#		logging.info("   Tile {} from {} was not max value: [{}]".format(current.toString(), parentString, '], ['.join(str(x) for x in newValue)))
 		if dist > depthEvaluated:
 			depthEvaluated = dist
-		dist += 1
 		if (dist < maxDepth):
+			dist += 1
 			for next in current.moveable: #new spots to try
 				if (next.mountain 
 						or (noNeutralCities and next.player == -1 and next.isCity) 
@@ -1248,6 +1265,49 @@ def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc =
 		globalVisited[current.x][current.y] = True
 		if (negativeFunc == None or not negativeFunc(current)):
 			foreachFunc(current)
+
+		if dist > depthEvaluated:
+			depthEvaluated = dist
+		if (dist <= maxDepth):
+			for next in current.moveable: #new spots to try					
+				if (next.mountain or next.isobstacle() or (skipFunc != None and skipFunc(next))):
+					continue
+					
+				newDist = dist + 1
+				frontier.appendleft((next, newDist))
+	if not noLog:
+		logging.info("Completed breadth_first_foreach. startTiles[0] {},{}: ITERATIONS {}, DURATION {:.3f}, DEPTH {}".format(startTiles[0].x, startTiles[0].y, iter, time.time() - start, depthEvaluated))
+
+
+
+
+
+def breadth_first_foreach_dist(map, startTiles, maxDepth, foreachFunc, negativeFunc = None, skipFunc = None, skipTiles = None, searchingPlayer = -2, noLog = False):
+	if searchingPlayer == -2:
+		searchingPlayer = map.player_index
+	frontier = deque()
+	globalVisited = [[False for x in range(map.rows)] for y in range(map.cols)]
+	if skipTiles != None:
+		for tile in skipTiles:
+			globalVisited[tile.x][tile.y] = True
+
+	for tile in startTiles:
+		if tile.mountain:
+			#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
+			continue
+		frontier.appendleft((tile, 0))
+	start = time.time()
+	iter = 0
+	depthEvaluated = 0
+	while len(frontier) > 0:
+		iter += 1
+			
+		(current, dist) = frontier.pop()
+		if globalVisited[current.x][current.y]:
+			continue
+		globalVisited[current.x][current.y] = True
+		if (negativeFunc == None or not negativeFunc(current)):
+			foreachFunc(current, dist)
 
 		if dist > depthEvaluated:
 			depthEvaluated = dist

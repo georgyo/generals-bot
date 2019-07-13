@@ -161,12 +161,35 @@ class ArmyTracker(object):
 			#	# army did not move and we attacked it?
 
 	
-			if army.player == army.tile.player and army.value < army.tile.army - 1:
-				logging.info("Army {} tile was just gathered to, nbd, update it and try to find fog source".format(army.toString()))
-				sourceFogArmyPath = self.find_fog_source(army.tile)
-				if sourceFogArmyPath != None:
-					self.fogPaths.append(sourceFogArmyPath.get_reversed())
-					self.resolve_fog_emergence(sourceFogArmyPath, army.tile)
+			if army.player == army.tile.player and army.value < army.tile.army - 1 and army.tile.visible:
+				logging.info("Army {} tile was just gathered to, nbd, update it.".format(army.toString()))
+				source = self.find_visible_source(army.tile)
+				if source == None:
+					logging.info("Army {} must have been gathered to from under the fog, searching:".format(army.toString()))
+					sourceFogArmyPath = self.find_fog_source(army.tile)
+					if sourceFogArmyPath != None:
+						self.fogPaths.append(sourceFogArmyPath.get_reversed())	
+						minRatio = 1.8
+						isGoodResolution = sourceFogArmyPath.value > army.tile.army * minRatio
+						logging.info("sourceFogArmyPath.value ({}) > army.tile.army * {} ({:.1f}) : {}".format(sourceFogArmyPath.value, minRatio, army.tile.army * minRatio, isGoodResolution))
+						if not isGoodResolution:
+							armyEmergenceValue = abs(army.tile.delta.armyDelta)
+							logging.info("  WAS POOR RESOLUTION! Adding emergence for player {} army.tile {} value {}".format(army.tile.player, army.tile.toString(), armyEmergenceValue))
+							self.new_army_emerged(army.tile, armyEmergenceValue)
+						self.resolve_fog_emergence(sourceFogArmyPath, army.tile)
+				else:
+					if source in self.armies:
+						sourceArmy = self.armies[source]
+						larger = sourceArmy
+						smaller = army
+						if sourceArmy.value < army.value:
+							larger = army
+							smaller = sourceArmy
+						logging.info("Army {} was gathered to visibly from source ARMY {} and will be merged as {}".format(army.toString(), sourceArmy.toString(), larger.toString()))
+						self.merge_armies(larger, smaller, army.tile)
+						continue
+					else:
+						logging.info("Army {} was gathered to visibly from source tile {}".format(army.toString(), source.toString()))
 				self.trackingArmies[army.tile] = army
 				army.update()
 				continue
@@ -296,6 +319,22 @@ class ArmyTracker(object):
 		for army in self.trackingArmies.values():
 			self.armies[army.tile] = army
 	
+	def find_visible_source(self, tile):
+		if tile.delta.armyDelta == 0:
+			return None
+		# todo check for 0 sums first before 2 >= x >= -2
+		for adjacent in tile.moveable:
+			isMatch = False
+			if 2 >= tile.delta.armyDelta + adjacent.delta.armyDelta >= -2:
+				isMatch = True
+			
+			logging.info("  Find visible source  {} ({}) <- {} ({}) ? {}".format(tile.toString(), tile.delta.armyDelta, adjacent.toString(), adjacent.delta.armyDelta, isMatch))
+			if isMatch:
+				return adjacent
+
+		return None
+
+
 
 	def army_moved(self, army, tile):
 		if army.tile in self.armies:
@@ -442,12 +481,12 @@ class ArmyTracker(object):
 					if sourceFogArmyPath != None:
 						self.fogPaths.append(sourceFogArmyPath.get_reversed())
 						resolvedFogSourceArmy = True
-						minRatio = 1.7
+						minRatio = 1.8
 						isGoodResolution = sourceFogArmyPath.value > tile.army * minRatio
 						logging.info("sourceFogArmyPath.value ({}) > tile.army * {} ({:.1f}) : {}".format(sourceFogArmyPath.value, minRatio, tile.army * minRatio, isGoodResolution))
 						if not isGoodResolution:
 							armyEmergenceValue = abs(tile.delta.armyDelta)
-							logging.info("Adding emergence for player {} tile {} value {}".format(tile.player, tile.toString(), armyEmergenceValue))
+							logging.info("  WAS POOR RESOLUTION! Adding emergence for player {} tile {} value {}".format(tile.player, tile.toString(), armyEmergenceValue))
 							self.new_army_emerged(tile, armyEmergenceValue)
 						self.resolve_fog_emergence(sourceFogArmyPath, tile)
 				if not resolvedFogSourceArmy:
@@ -460,13 +499,17 @@ class ArmyTracker(object):
 
 	def new_army_emerged(self, emergedTile, armyEmergenceValue):
 		logging.info("running new_army_emerged for tile {}".format(emergedTile.toString()))
-		distance = 4
-		def foreachFunc(tile): 
-			self.emergenceLocationMap[emergedTile.player][tile.x][tile.y] += armyEmergenceValue
+		distance = 7
+		#armyEmergenceValue = 
+		armyEmergenceValue = 2 + (armyEmergenceValue ** 0.8)
+		if armyEmergenceValue > 30:
+			armyEmergenceValue = 30
+		def foreachFunc(tile, dist): 
+			self.emergenceLocationMap[emergedTile.player][tile.x][tile.y] += 3 * armyEmergenceValue // (dist + 1)
 
 		negativeLambda = lambda tile: tile.discovered
 		skipFunc = lambda tile: tile.visible and tile != emergedTile
-		breadth_first_foreach(self.map, [emergedTile], distance, foreachFunc, negativeLambda, skipFunc)
+		breadth_first_foreach_dist(self.map, [emergedTile], distance, foreachFunc, negativeLambda, skipFunc)
 
 		#self.emergenceLocationMap[emergedTile.player][emergedTile.x][emergedTile.y] += armyEmergenceValue
 		for handler in self.notify_unresolved_army_emerged:
@@ -516,7 +559,7 @@ class ArmyTracker(object):
 		def fogSkipFunc(nextTile, prioObject): 
 			(dist, negArmy, turnsNegative, consecutiveUndiscovered) = prioObject
 			#logging.info("nextTile {}: negArmy {}".format(nextTile.toString(), negArmy))
-			return nextTile.visible or turnsNegative > 1 or consecutiveUndiscovered > 7 or dist > 15
+			return (nextTile.visible and not nextTile.delta.gainedSight) or turnsNegative > 1 or consecutiveUndiscovered > 7 or dist > 15
 		inputTiles = {}
 		delta = abs(tile.delta.armyDelta)
 		logging.info("Looking for fog army path of value {} to tile {}".format(delta, tile.toString()))
@@ -537,7 +580,13 @@ class ArmyTracker(object):
 		return fogSourcePath
 
 	def resolve_fog_emergence(self, sourceFogArmyPath, fogTile):
+		existingArmy = None
 		armiesFromFog = []
+		if fogTile in self.armies:
+			existingArmy = self.armies[fogTile]
+			if existingArmy.player == fogTile.player:
+				armiesFromFog.append(existingArmy)
+
 		node = sourceFogArmyPath.start.next
 		while node != None:
 			logging.info("resolve_fog_emergence tile {}".format(node.tile.toString()))
@@ -573,8 +622,19 @@ class ArmyTracker(object):
 					self.scrap_army(army)
 			self.resolve_entangled_armies(maxArmy)
 			self.armies[fogTile] = maxArmy
+			maxArmy.expectedPath = None
 		else:
 			# then this is a brand new army because no armies were on the fogPath, but we set the source path to 1's still
 			army = Army(fogTile)
 			self.armies[fogTile] = army
 			army.path = sourceFogArmyPath
+
+	def merge_armies(self, largerArmy, smallerArmy, finalTile):
+		del self.armies[largerArmy.tile]
+		del self.armies[smallerArmy.tile]
+		self.scrap_army(smallerArmy)
+		
+		if largerArmy.tile != finalTile:
+			largerArmy.update_tile(finalTile)
+		self.armies[finalTile] = largerArmy
+		largerArmy.update()

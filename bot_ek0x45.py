@@ -115,7 +115,6 @@ class EklipZBot(object):
 		self.allIn = False
 		self.lastTargetAttackTurn = 0
 
-		self.largeVisibleEnemyTiles = []
 		self.generalApproximations = []
 		self.allUndiscovered = []
 		self.lastGeneralGatherTurn = -2
@@ -357,7 +356,7 @@ class EklipZBot(object):
 		cycleDuration = 50
 
 		# at what point in the cycle to split from gather to utility moves. TODO dynamically determine this based on available utility moves?
-		split = 18
+		split = 21
 
 		# offset so that this timing doesn't always sync up with every 100 moves, instead could sync up with 250, 350 instead of 300, 400 etc.
 		# for cycle 50 this is always 0
@@ -392,16 +391,16 @@ class EklipZBot(object):
 			elif genPlayer.tileCount > 90:
 				randomVal = random.randint(0,15)
 				# slightly longer split
-				split = 20
+				split = 26
 			elif genPlayer.tileCount > 65:
 				# slightly longer split
-				split = 24
+				split = 25
 			elif genPlayer.tileCount > 45:
 				# slightly longer split
-				split = 23
+				split = 24
 			elif genPlayer.tileCount > 30:
 				# slightly longer split
-				split = 22
+				split = 23
 		split += randomVal
 		offset = self._map.turn % cycleDuration
 		if offset % 50 != 0:
@@ -721,8 +720,6 @@ class EklipZBot(object):
 
 			self.viewInfo.addSearched(general)
 			gatherPaths = []
-			#for tile in self.largeVisibleEnemyTiles:
-			#	negativeTiles.add(tile)
 			if (threat != None and threat.threatType == ThreatType.Kill):
 
 				targetTile = None
@@ -1384,10 +1381,6 @@ class EklipZBot(object):
 						logging.info("including cities")
 						for city in self.enemyCities:
 							attackable.append(city)
-						# if (self._map.turn % 10 == 0):
-						# 	logging.info("including large enemy tiles")
-						# 	for enemyTile in self.largeVisibleEnemyTiles:
-						# 		attackable.append(enemyTile)
 					if (len(attackable) == 0 and self.targetPlayer == -1):
 						#TODO prioritize better spots wtf not random
 						attackable = self.allUndiscovered
@@ -1719,21 +1712,87 @@ class EklipZBot(object):
 		logging.info("player_army_near for tile {},{} player {} returned {}".format(tile.x, tile.y, player, value))
 		return value
 
-	
+	def attempt_predicted_general_exploration(self, negativeTiles):	
+		def priority_func_explore(nextTile, currentPriorityObject):
+			distance, negTileTakenScore, negArmyFound = currentPriorityObject
+			tilePlayer = nextTile.player
+			if self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer:
+				tilePlayer = self.targetPlayer
+			
+			if nextTile not in negativeTiles:
+				if nextTile.player == self.general.player:
+					negArmyFound -= nextTile.army
+				else:
+					negArmyFound += nextTile.army
+					if not self.allIn and self._map.remainingPlayers < 4:
+						if tilePlayer == -1:
+							negTileTakenScore -= 1
+						elif tilePlayer == self.targetPlayer:
+							negTileTakenScore -= 2
+				
+			negArmyFound += 1
+			distance += 1
+			return (distance, negTileTakenScore, negArmyFound)
+
+		def goal_func_target_tile(currentTile, priorityObject):
+			distance, negTileTakenScore, negArmyFound = priorityObject
+			if negArmyFound < 0:
+				return True
+			return False
+
+		predictionTargetingDepth = 5
+		targetPredictionStart = {}
+		targetPredictionStart[self.targetPlayerExpectedGeneralLocation] = ((0, 0, self.targetPlayerExpectedGeneralLocation.army + 1), 0)
+		logging.info("   Attempting a {} turn kill on predicted general location {}:".format(predictionTargetingDepth, self.targetPlayerExpectedGeneralLocation.toString()))
+		killPath = breadth_first_dynamic(self._map, targetPredictionStart, goal_func_target_tile, 0.1, predictionTargetingDepth, 
+								   noNeutralCities = True, 
+								   negativeTiles = negativeTiles, 
+								   searchingPlayer = self.general.player, 
+								   priorityFunc = priority_func_explore)
+
+		#killPath = dest_breadth_first_target(self._map, [self.targetPlayerExpectedGeneralLocation], 30, 0.1, predictionTargetingDepth, None, dontEvacCities=False)
+		if killPath != None:
+			killPath = killPath.get_reversed()
+			self.info("UD PREDICT: {}".format(killPath.toString()))
+			killPath = self.get_value_per_turn_subsegment(killPath, 1.0)
+			if killPath.length > 2:
+				killPath = killPath.get_subsegment(2)
+		else:
+			logging.info("UD PREDICT KILL FAILED")
+
+
+		return killPath
+
 	def explore_target_player_undiscovered(self, negativeTiles, targetArmy = 1):
 		if self._map.turn < 100 or self.targetPlayer == -1 or self._map.generals[self.targetPlayer] != None:
 			return None
-		logging.info("- - - - - EXPLORE_TARGET_PLAYER_UNDISCOVERED - - - - -")
-		predictionTargetingDepth = 8
-		logging.info("   Attempting a {} turn kill on predicted general location {}:".format(predictionTargetingDepth, self.targetPlayerExpectedGeneralLocation.toString()))
-		killPath = dest_breadth_first_target(self._map, [self.targetPlayerExpectedGeneralLocation], 30, 0.1, predictionTargetingDepth, None, dontEvacCities=False)
-		if killPath != None:
-			self.info("UD PREDICT: {}".format(killPath.toString()))			
-			killPath = self.get_value_per_turn_subsegment(killPath, 0.9)
-			if killPath.length > 2:
-				killPath = killPath.get_subsegment(2)
-			return killPath
 
+		logging.info("- - - - - EXPLORE_TARGET_PLAYER_UNDISCOVERED - - - - -")		
+
+		def priority_func_non_all_in(nextTile, currentPriorityObject):
+			distance, negTileTakenScore, negArmyFound = currentPriorityObject
+			tilePlayer = nextTile.player
+			if self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer:
+				tilePlayer = self.targetPlayer
+			
+			if nextTile not in negativeTiles:
+				if nextTile.player == self.general.player:
+					negArmyFound -= nextTile.army
+				else:
+					negArmyFound += nextTile.army
+					if not self.allIn and self._map.remainingPlayers < 4:
+						if tilePlayer == -1:
+							negTileTakenScore -= 1
+						elif tilePlayer == self.targetPlayer:
+							negTileTakenScore -= 2
+				
+			negArmyFound += 1
+			distance += 1
+			return (distance, negTileTakenScore, negArmyFound)
+
+		killPath = self.attempt_predicted_general_exploration(negativeTiles)
+		if killPath != None:
+			return killPath
 
 		genPlayer = self._map.players[self.general.player]
 		enemyUndiscBordered = {}
@@ -1770,26 +1829,6 @@ class EklipZBot(object):
 			if negArmyFound < negLongArmy:
 				return True
 			return False
-
-		def priority_func_non_all_in(nextTile, currentPriorityObject):
-			distance, negTileTakenScore, negArmyFound = currentPriorityObject
-			tilePlayer = nextTile.player
-			if self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer:
-				tilePlayer = self.targetPlayer
-			
-			if nextTile not in negativeTiles:
-				if nextTile.player == self.general.player:
-					negArmyFound -= nextTile.army
-				else:
-					negArmyFound += nextTile.army
-					if tilePlayer == -1:
-						negTileTakenScore -= 1
-					elif tilePlayer == self.targetPlayer:
-						negTileTakenScore -= 2
-				
-			negArmyFound += 1
-			distance += 1
-			return (distance, negTileTakenScore, negArmyFound)
 		path = None
 
 		path = breadth_first_dynamic(self._map,
@@ -2042,6 +2081,11 @@ class EklipZBot(object):
 				cityCount = distToGen = negArmy = 0
 				if currentPriorityObject != None:
 					(cityCount, distToGen, negArmy) = currentPriorityObject
+
+				# hack to not gather cities themselves until last, but still gather other leaves to cities
+				if not currentTile.isCity:
+					cityCount = 0
+
 				# because these are all negated in the priorityFunc we need to negate them here for making them 'positive' weights for value
 				return (0 - cityCount, 0 - distToGen - negArmy)
 				#return (0 - cityCount, 0 - distToGen, 0 - negArmy)
@@ -2786,7 +2830,7 @@ class EklipZBot(object):
 		depth = self.distance_from_general(self.targetPlayerExpectedGeneralLocation) - 2
 		if (depth < 10):
 			depth = 10
-		self.dangerAnalyzer.analyze(self.general, depth)
+		self.dangerAnalyzer.analyze(self.general, depth, self.armyTracker.armies)
 
 
 	def general_min_army_allowable(self):
@@ -3551,7 +3595,7 @@ class EklipZBot(object):
 		
 		if turns < 0:
 			turns = 50
-		remainingTurns = turns + 1
+		remainingTurns = turns
 		sortedTiles = sorted(list(where(generalPlayer.tiles, lambda tile: tile.army > 1)), key = lambda tile: 0 - tile.army)
 		paths = []
 		fullCutoff = 15
@@ -3805,7 +3849,8 @@ class EklipZBot(object):
 					#breadth_first_foreach(self._map, [tile], undiscoveredCounterDepth, armyFogEmergenceCounter, noLog = True, skipFunc = None)
 					#foundValue += fogArmies[0]
 					if self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y] > 0:
-						foundValue += emergenceLogFactor * math.log(self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y], 2)
+						#foundValue += emergenceLogFactor * math.log(self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y], 2)
+						foundValue += self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y]
 					values[tile.x][tile.y] = foundValue
 					if enemyCounter.value > 0 and foundValue > maxAmount:
 						maxTile = tile
@@ -3842,7 +3887,8 @@ class EklipZBot(object):
 						#			logging.info(" Adding value 2 * ({} ** 0.5) ({}) from {}".format(emergeVal, adjusted, tile.toString()))
 						#breadth_first_foreach(self._map, [tile], undiscoveredCounterDepth, armyFogEmergenceCounter, noLog = True, skipFunc = None)
 						if self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y] > 0:
-							foundValue += emergenceLogFactor * math.log(self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y], 2)
+							#foundValue += emergenceLogFactor * math.log(self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y], 2)
+							foundValue += self.armyTracker.emergenceLocationMap[self.targetPlayer][tile.x][tile.y]
 						values[tile.x][tile.y] = foundValue
 						if enemyCounter.value > 0 and undiscCounter.value > 0 and foundValue > maxAmount:
 							maxTile = tile
@@ -4192,8 +4238,10 @@ def place_move(source, dest, moveHalf = False):
 			moveHalf = True
 		elif source.isCity and _map.turn - source.turn_captured < 50:
 			moveHalf = True
-	
-	logging.info("Placing move: {},{} to {},{}".format(source.x, source.y, dest.x, dest.y))
+	if source.army == 1 or source.army == 0:
+		logging.info("BOT PLACED BAD MOVE! {},{} to {},{}. Will send anyway, i guess.".format(source.x, source.y, dest.x, dest.y))
+	else:
+		logging.info("Placing move: {},{} to {},{}".format(source.x, source.y, dest.x, dest.y))
 	return _bot.place_move(source, dest, move_half=moveHalf)
 
 

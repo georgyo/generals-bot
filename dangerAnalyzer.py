@@ -33,9 +33,6 @@ class ThreatObj(object):
 
 
 
-
-
-
 class DangerAnalyzer(object):
 	def __init__(self, map):
 		self.map = map
@@ -50,21 +47,18 @@ class DangerAnalyzer(object):
 
 		self.largeVisibleEnemyTiles = []
 		
-	def analyze(self, general, depth):
+	def analyze(self, general, depth, armies):
 		self.scan(general)
 		minDanger = 1000
-		
-		generalScore = self.map.scores[self.map.player_index]
 
-		self.fastestVisionThreat = self.getVisionThreat(general, 10)
-		self.fastestThreat = self.getFastestThreat(general, depth)
-		self.highestThreat = self.getHighestThreat(general, depth)
+		self.fastestVisionThreat = self.getVisionThreat(general, 10, armies)
+		self.fastestThreat = self.getFastestThreat(general, depth, armies)
+		self.highestThreat = self.getHighestThreat(general, depth, armies)
 
 		self.anyThreat = self.fastestThreat != None or self.fastestVisionThreat != None or self.highestThreat != None
 		
 
-
-	def getVisionThreat(self, general, depth):
+	def getVisionThreat(self, general, depth, armies):
 		curThreat = None
 		#hack vision threat broken todo fix
 		# DO NOT COMMENT UNTIL TILE RESTRICTIONS IS IMPLEMENTED :V
@@ -85,32 +79,45 @@ class DangerAnalyzer(object):
 			return None
 		return ThreatObj(curThreat.length, curThreat.value, curThreat, ThreatType.Vision)
 	
-	def getFastestThreat(self, general, depth):
+
+	def getFastestThreat(self, general, depth, armies):
 		startTime = time.time()
 		logging.info("------\nfastest threat analyzer: depth {}".format(depth))
 		curThreat = None
 		saveTile = None
 		for player in self.map.players:
 			if not player.dead and (player.index != general.player) and player.index not in self.map.teammates and len(self.playerTiles[player.index]) > 0 and self.map.players[player.index].tileCount > 10:
-				# -1.5 because of the stupid increment we're using.
-				path = dest_breadth_first_target(self.map, [general], 0, 0.05, depth, None, player.index, False, 6)
+				path = dest_breadth_first_target(self.map, [general], 0, 0.05, depth, None, player.index, False, 5)
 				if path != None and (curThreat == None or path.length < curThreat.length or (path.length == curThreat.length and path.value > curThreat.value)):
-					# If there is NOT another path to our general that doesn't hit the same tile next to our general, then we can use one extra turn on defense
-					# gathering to that 'saveTile'.
+					# If there is NOT another path to our general that doesn't hit the same tile next to our general, 
+					# then we can use one extra turn on defense gathering to that 'saveTile'.
 					lastTile = path.tail.prev.tile
-					altPath = dest_breadth_first_target(self.map, [general], 0, 0.05, path.length + 5, None, player.index, False, 6, skipTiles = [lastTile])
+					altPath = dest_breadth_first_target(self.map, [general], 0, 0.05, path.length + 5, None, player.index, False, 5, skipTiles = [lastTile])
 					if altPath == None or altPath.length > path.length:
 						saveTile = lastTile
 						logging.info("saveTile blocks path to our king: {},{}".format(saveTile.x, saveTile.y))
 					logging.info("dest BFS found KILL against our general:\n{}".format(path.toString()))
 					curThreat = path
+		for armyTile in armies.keys():
+			army = armies[armyTile]
+			# if this is an army in the fog that isn't on a tile owned by that player, lets see if we need to path it.
+			if not armyTile.visible and armyTile.player != army.player and army.player != general.player:
+				startTiles = {}
+				startTiles[armyTile] = ((0, 0, 0, 0 - army.value - 1, armyTile.x, armyTile.y, 0.5), 0)
+				goalFunc = lambda tile, prio: tile == general
+				path = breadth_first_dynamic(self.map, startTiles, goalFunc, 0.2, depth, noNeutralCities = True, searchingPlayer = army.player)
+				if path != None:
+					logging.info("Army thingy found a path! Army {}, path {}".format(army.toString(), path.toString()))
+					if path.value > 0 and (curThreat == None or path.length < curThreat.length or path.value > curThreat.value):
+						curThreat = path
+					army.expectedPath = path
 		logging.info("fastest threat analyzer took {:.3f}".format(time.time() - startTime))
 		if (curThreat == None):
 			return None
 		return ThreatObj(curThreat.length - 1, curThreat.value, curThreat, ThreatType.Kill, saveTile)
 	
 	
-	def getHighestThreat(self, general, depth):
+	def getHighestThreat(self, general, depth, armies):
 		return self.fastestThreat
 	
 
