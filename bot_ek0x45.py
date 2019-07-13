@@ -2071,6 +2071,7 @@ class EklipZBot(object):
 			
 			# shitty hack to stop dropping city gathers when gathers are interrupted. Really, timings should store that info and delaying a gather should still complete the critical tiles on the primary gather
 			if player.cityCount > 4 or nonCityLeafCount < 4:
+				logging.info("Using default_high_cities_func for gather prio. player.cityCount {} > 4 or nonCityLeafCount {} < 4".format(player.cityCount, nonCityLeafCount))
 				priorityFunc = default_high_cities_func
 			else:
 				priorityFunc = default_priority_func
@@ -2083,7 +2084,7 @@ class EklipZBot(object):
 					(cityCount, distToGen, negArmy) = currentPriorityObject
 
 				# hack to not gather cities themselves until last, but still gather other leaves to cities
-				if not currentTile.isCity:
+				if not (currentTile.isCity or currentTile.isGeneral):
 					cityCount = 0
 
 				# because these are all negated in the priorityFunc we need to negate them here for making them 'positive' weights for value
