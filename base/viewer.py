@@ -526,7 +526,7 @@ class GeneralsViewer(object):
 			#playerB = (playerB + 256) // 2
 		self.draw_square(tile, 1, playerR, playerG, playerB, min(255, int(alphaStart * 1.3)))
 
-		self.draw_path(army.path, R, G, B, alphaStart, 0, 0)
+		#self.draw_path(army.path, R, G, B, alphaStart, 0, 0)
 
 		if army.expectedPath != None:
 			self.draw_path(army.expectedPath, 255, 0, 0, 150, 10, 100)

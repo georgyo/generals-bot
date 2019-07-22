@@ -223,7 +223,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 	if isinstance(startTiles, dict):
 		for start in startTiles.keys():
 			startDist = startTiles[start]			
-			logging.info("a* enqueued start tile {},{}".format(start.x, start.y))
+			logging.info("a* enqueued start tile {} with extraArmy {}".format(start.toString(), requireExtraArmy))
 			startArmy = start.army
 			if ignoreStartTile:
 				startArmy = 0
@@ -235,7 +235,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 			came_from[start] = None
 	else:
 		for start in startTiles:
-			logging.info("a* enqueued start tile {},{}".format(start.x, start.y))
+			logging.info("a* enqueued start tile {} with extraArmy {}".format(start.toString(), requireExtraArmy))
 			startArmy = start.army
 			if ignoreStartTile:
 				startArmy = 0
@@ -272,8 +272,8 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 				foundArmy = army
 				foundGoal = True
 				break
-			else: # skip paths that go through king, that wouldn't make sense
-				#logging.info("a* path went through king")
+			else: # skip paths that go through target, that wouldn't make sense
+				#logging.info("a* path went through target")
 				continue
 		if (dist < maxDepth):
 			for next in current.moveable: #new spots to try
@@ -323,6 +323,10 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 		dist -= 1
 		pathObject.add_start(node)
 	logging.info("A* FOUND KILLPATH OF LENGTH {} VALUE {}\n{}".format(pathObject.length, pathObject.value, pathObject.toString()))
+	pathObject.calculate_value(startTiles[0].player)
+	if pathObject.value < requireExtraArmy:
+		logging.info("A* path {} wasn't good enough, returning none".format(pathObject.toString()))
+		return None
 	return pathObject
 
 
@@ -523,6 +527,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	priorityFunc is (nextTile, currentPriorityobject) -> nextPriorityObject NEGATIVELY weighted
 	'''
 	startTime = time.time()
+	negativeTilesOrig = negativeTiles
 	if negativeTiles != None:
 		negativeTiles = negativeTiles.copy()
 	else:
@@ -565,8 +570,9 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 			if (nextTile not in negativeTiles):
 				if (searchingPlayer == nextTile.player):
 					negArmySum -= nextTile.army
-					if nextTile.isCity:
-						negArmySum -= turns // 3
+					# # this broke gather approximation, couldn't predict actual gather values based on this
+					#if nextTile.isCity:
+					#	negArmySum -= turns // 3
 				else:
 					negArmySum += nextTile.army
 			#if nextTile.player != searchingPlayer and not (nextTile.player == -1 and nextTile.isCity):
@@ -608,8 +614,8 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	for tile in startTilesDict.keys():
 		(startPriorityObject, distance) = startTilesDict[tile]
 		logging.info("Including tile {},{} in startTiles at distance {}".format(tile.x, tile.y, distance))
-		if viewInfo:
-			viewInfo.bottomRightGridText[tile.x][tile.y] = distance
+		#if viewInfo:
+		#	viewInfo.bottomRightGridText[tile.x][tile.y] = distance
 
 	startR = 100
 	startG = 150
@@ -674,8 +680,8 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 			startTilesDict[node.tile] = (nextPrioObj, newDist)
 			negativeTiles.add(node.tile)
 			logging.info("Including tile {},{} in startTilesDict at newDist {}  (distance {} addlDist {})".format(node.tile.x, node.tile.y, newDist, distance, addlDist))
-			if viewInfo:
-				viewInfo.bottomRightGridText[node.tile.x][node.tile.y] = newDist
+			#if viewInfo:
+			#	viewInfo.bottomRightGridText[node.tile.x][node.tile.y] = newDist
 			nextTreeNode = TreeNode(node.tile, currentTreeNode.tile, newDist)
 			nextTreeNode.value = runningValue
 			nextTreeNode.gatherTurns = 1
@@ -700,7 +706,26 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	
 
 	logging.info("Concluded greedy-bfs-gather built from {} path segments. Duration: {:.3f}".format(itr, time.time() - startTime))
-	return list(where(treeNodeLookup.values(), lambda treeNode: treeNode.fromTile == None))
+	rootNodes = list(where(treeNodeLookup.values(), lambda treeNode: treeNode.fromTile == None))
+	for node in rootNodes:
+		recalculate_tree_values(node, negativeTilesOrig, searchingPlayer = searchingPlayer, onlyCalculateFriendlyArmy = False, viewInfo = viewInfo)
+	return rootNodes
+
+def recalculate_tree_values(rootNode, negativeTiles, searchingPlayer, onlyCalculateFriendlyArmy = False, viewInfo = None):
+	logging.info("recalculate_tree_values {}, searchingPlayer {}, onlyCalculateFriendlyArmy {}".format(rootNode.tile.toString(), searchingPlayer, onlyCalculateFriendlyArmy))
+	sum = -1
+	if negativeTiles == None or rootNode.tile not in negativeTiles:
+		if rootNode.tile.player == searchingPlayer:
+			sum += rootNode.tile.army
+		elif not onlyCalculateFriendlyArmy:
+			sum -= rootNode.tile.army
+	for child in rootNode.children:
+		recalculate_tree_values(child, negativeTiles, searchingPlayer, onlyCalculateFriendlyArmy, viewInfo)
+		sum += child.value
+	if viewInfo:
+		viewInfo.bottomRightGridText[rootNode.tile.x][rootNode.tile.y] = sum
+	rootNode.value = sum
+
 
 def get_tree_move(gathers, priorityFunc, valueFunc):
 	if len(gathers) == 0:
@@ -851,7 +876,6 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 		newValue = valueFunc(current, prioVals)		
 		#if logResultValues:
 		#	logging.info("Tile {} value?: [{}]".format(current.toString(), '], ['.join(str(x) for x in newValue)))
-		#if logResultValues:
 		#	if parent != None:
 		#		parentString = parent.toString()
 		#	else:
@@ -859,6 +883,10 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 		if maxValue == None or newValue > maxValue:
 			foundDist = dist
 			if logResultValues:
+				if parent != None:
+					parentString = parent.toString()
+				else:
+					parentString = "None"
 				logging.info("Tile {} from {} is new max value: [{}]  (dist {})".format(current.toString(), parentString, '], ['.join(str(x) for x in newValue), dist))
 			maxValue = newValue
 			endNode = current

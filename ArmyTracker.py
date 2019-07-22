@@ -462,9 +462,14 @@ class ArmyTracker(object):
 		#for tile in self.map.reachableTiles:
 		#	if tile.player != -1 and (playerLargest[tile.player] == None or tile.army > playerLargest[tile.player].army):
 		#		playerLargest[tile.player] = tile
-		for tile in self.map.reachableTiles:
+		for tile in self.map.reachableTiles:			
 			notOurMove = (self.lastMove == None or (tile != self.lastMove.source and tile != self.lastMove.dest))
-			tileNewlyMovedByEnemy = not tile.delta.gainedSight and tile.player != self.map.player_index and tile.delta.armyDelta > 2 and notOurMove
+			tileNewlyMovedByEnemy = (tile not in self.armies 
+									and not tile.delta.gainedSight 
+									and tile.player != self.map.player_index 
+									and abs(tile.delta.armyDelta) > 2 
+									and tile.army > 2
+									and notOurMove)
 
 			# if we moved our army into a spot last turn that a new enemy army appeared this turn
 			tileArmy = None
@@ -515,15 +520,41 @@ class ArmyTracker(object):
 		for handler in self.notify_unresolved_army_emerged:
 			handler(emergedTile)
 
+
 	def find_fog_source(self, tile):
 		if len(where(tile.moveable, lambda adj: not adj.isobstacle() and not adj.visible)) == 0:
 			logging.info("        For new army at tile {} there were no adjacent fogBois, no search".format(tile.toString()))
 			return None
+		distPowFactor = 0.3
+		distOffset = 4
+		#best = -2000
+		#bestArmy = 0
+		#bestDist = 0
+		#for negArmy in range(-50, 50, 5):
+		#	for dist in range(0,10, 2):
+		#		val = 1000 - (2*abs(negArmy) - negArmy) * ((distOffset+dist)**distPowFactor)
+		#		if dist == 0:
+		#			val = -2000
+		#		if val > best:
+		#			best = val
+		#			bestArmy = negArmy
+		#			bestDist = dist
+		#		logging.info("trackerValFunc negArmy {} dist {} = {:.1f}".format(negArmy, dist, val))
+		#logging.info("Best was negArmy {} dist {} val {:.1f}".format(bestArmy, bestDist, best))
+
 		def valFunc(thisTile, prioObject):
 			(dist, negArmy, turnsNegative, consecUndisc) = prioObject
-			val = 1000 - (2*abs(negArmy) - negArmy) * ((4+dist)**0.3)
+			val = 0
 			if dist == 0:
-				val = 0
+				val = -2000
+			else:
+				val = 1000 - (2*abs(negArmy) - negArmy) * ((distOffset+dist)**distPowFactor)
+				if thisTile.player == tile.player and thisTile.army > 8:
+					negArmy += thisTile.army // 2
+					moveHalfVal = 1000 - (2*abs(negArmy) - negArmy) * ((distOffset+dist)**distPowFactor)
+					if moveHalfVal > val:
+						logging.info("using moveHalfVal {:.1f} over val {:.1f} for tile {} turn {}".format(moveHalfVal, val, thisTile.toString(), self.map.turn))
+						val = moveHalfVal
 			# closest path value to the actual army value. Fake tuple for logging.
 			# 2*abs for making it 3x improvement on the way to the right path, and 1x unemprovement for larger armies than the found tile
 			# negative weighting on dist to try to optimize for shorter paths instead of exact 
