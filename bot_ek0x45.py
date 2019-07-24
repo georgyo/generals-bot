@@ -148,6 +148,7 @@ class EklipZBot(object):
 		self.targetPlayerExpectedGeneralLocation = None
 		self.lastPlayerKilled = None
 		self.launchPoints = set()
+		self.explored_this_turn = False
 
 	def spawnWorkerThreads(self):
 		return
@@ -310,7 +311,9 @@ class EklipZBot(object):
 		return (self._map.turn + turnOffset + self.timings.offsetTurns) % self.timings.cycleTurns >= self.timings.splitTurns
 
 
-	def init_turn(self):
+	def init_turn(self, secondAttempt = False):
+		if not secondAttempt:
+			self.explored_this_turn = False
 		timeSinceLastUpdate = 0
 		now = time.time()
 		if self.lastTurnTime != 0:
@@ -359,14 +362,14 @@ class EklipZBot(object):
 
 
 	def get_timings(self):
-		randomVal = random.randint(-4,5)
+		randomVal = random.randint(-3,4)
 		# what size cycle to use, normally the 50 turn cycle
 		cycleDuration = 50
 
 		# at what point in the cycle to split from gather to utility moves. TODO dynamically determine this based on available utility moves?
-		split = 16
+		split = 18
 		if self._map.remainingPlayers > 2:
-			split = 19
+			split = 21
 
 		# offset so that this timing doesn't always sync up with every 100 moves, instead could sync up with 250, 350 instead of 300, 400 etc.
 		# for cycle 50 this is always 0
@@ -416,7 +419,7 @@ class EklipZBot(object):
 				split = 21
 
 		if self.targetPlayer == -1 and self._map.remainingPlayers == 2:
-			split -= 6
+			split -= 4
 		split += randomVal
 		offset = self._map.turn % cycleDuration
 		if offset % 50 != 0:
@@ -496,7 +499,7 @@ class EklipZBot(object):
 
 	def select_move(self, allowRetry = True):
 		start = time.time()
-		self.init_turn()
+		self.init_turn(secondAttempt = not allowRetry)
 		if allowRetry:
 			self.viewInfo.turnInc()
 		if self.timings == None or self.timings.should_recalculate(self._map.turn):
@@ -1784,12 +1787,414 @@ class EklipZBot(object):
 
 		return killPath
 
+
+	#def explore_optimal(self, negativeTiles):
+	#	def skip_after_out_of_army(nextTile, nextVal):
+	#		wastedMoves, pathPriorityDivided, negArmyRemaining, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, adjacentSetSoFar = nextVal
+	#		if negArmyRemaining >= 0:
+	#			return True
+	#		return False
+
+	#	def value_priority_army_dist(currentTile, priorityObject):
+	#		wastedMoves, pathPriorityDivided, negArmyRemaining, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, adjacentSetSoFar = priorityObject
+	#		# negative these back to positive
+	#		posPathPrio = 0-pathPriorityDivided
+	#		#return (posPathPrio, 0-armyRemaining, distSoFar)
+	#		dist = 1
+	#		if distSoFar > 0:
+	#			dist = distSoFar
+	#		return (0-(enemyTiles*2 + neutralTiles) / (dist), 
+	#					0-enemyTiles / (dist), 
+	#					posPathPrio, 
+	#					distSoFar)
+
+
+	#	def default_priority_func(nextTile, currentPriorityObject):
+	#		wastedMoves, pathPriorityDivided, negArmyRemaining, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, adjacentSetSoFar = currentPriorityObject
+	#		armyRemaining = 0 - negArmyRemaining
+	#		nextTileSet = tileSetSoFar.copy()
+	#		distSoFar += 1
+	#		# weight tiles closer to the target player higher
+	#		addedPriority = -7 - max(3, distMap[nextTile.x][nextTile.y] / 4)
+	#		if nextTile not in nextTileSet:
+	#			armyRemaining -= 1
+	#			releventAdjacents = where(nextTile.adjacents, lambda adjTile: adjTile not in adjacentSetSoFar and adjTile not in tileSetSoFar)
+	#			if negativeTiles == None or (nextTile not in negativeTiles):
+	#				if (searchingPlayer == nextTile.player):
+	#					armyRemaining += nextTile.army
+	#				else:
+	#					armyRemaining -= nextTile.army
+	#			nextTileSet.add(nextTile)
+	#			# enemytiles or enemyterritory undiscovered tiles
+	#			if (nextTile.player != -1 and nextTile.player == self.targetPlayer) or (not nextTile.visible and self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer):
+	#				if nextTile.player == -1:
+	#					# points for maybe capping target tiles
+	#					addedPriority += 4
+	#					enemyTiles -= 0.5
+	#					neutralTiles -= 0.5
+	#				else:
+	#					# points for capping target tiles
+	#					addedPriority += 6
+	#					enemyTiles -= 1
+	#				addedPriority += self.armyTracker.emergenceLocationMap[self.targetPlayer][nextTile.x][nextTile.y]
+	#				## points for locking all nearby enemy tiles down
+	#				#numEnemyNear = count(nextTile.adjacents, lambda adjTile: adjTile.player == self.targetPlayer)
+	#				#numEnemyLocked = count(releventAdjacents, lambda adjTile: adjTile.player == self.targetPlayer)
+	#				##    for every other nearby enemy tile on the path that we've already included in the path, add some priority
+	#				#addedPriority += (numEnemyNear - numEnemyLocked) * 12
+	#			elif nextTile.player == -1:
+	#				if nextTile.isCity: #TODO and is reasonably placed?
+	#					neutralTiles -= 12
+	#				# we'd prefer to be killing enemy tiles, yeah?
+	#				wastedMoves += 0.2
+	#				neutralTiles -= 1
+	#				# points for capping tiles in general
+	#				addedPriority += 2
+	#				# points for taking neutrals next to enemy tiles
+	#				numEnemyNear = count(nextTile.moveable, lambda adjTile: adjTile not in adjacentSetSoFar and adjTile.player == self.targetPlayer)
+	#				if numEnemyNear > 0:
+	#					addedPriority += 1
+	#			else: # our tiles and non-target enemy tiles get negatively weighted
+	#				#addedPriority -= 2
+	#				# 0.7
+	#				wastedMoves += 0.5
+	#			# points for discovering new tiles
+	#			addedPriority += count(releventAdjacents, lambda adjTile: not adjTile.discovered) / 2
+	#			## points for revealing tiles in the fog
+	#			#addedPriority += count(releventAdjacents, lambda adjTile: not adjTile.visible)
+	#		else:
+	#			wastedMoves += 1
+	#		nextAdjacentSet = adjacentSetSoFar.copy()
+	#		for adj in nextTile.adjacents:
+	#			nextAdjacentSet.add(adj)
+	#		newPathPriority = pathPriority - addedPriority
+	#		#if generalPlayer.tileCount < 46:
+	#		#	logging.info("nextTile {}, newPathPriority / distSoFar {:.2f}, armyRemaining {}, newPathPriority {}, distSoFar {}, len(nextTileSet) {}".format(nextTile.toString(), newPathPriority / distSoFar, armyRemaining, newPathPriority, distSoFar, len(nextTileSet)))
+	#		return (wastedMoves, newPathPriority / distSoFar, 0-armyRemaining, enemyTiles, neutralTiles, newPathPriority, distSoFar, nextTileSet, nextAdjacentSet)
+		
+	#	def initial_value_func_default(tile):
+	#		startingSet = set()
+	#		startingSet.add(tile)
+	#		startingAdjSet = set()
+	#		for adj in tile.adjacents:
+	#			startingAdjSet.add(adj)
+	#		return (0, 10, 0-tile.army, 0, 0, 0, 0, startingSet, startingAdjSet)
+
+	def get_optimal_exploration(self, turns, negativeTiles = None, valueFunc = None, priorityFunc = None, initFunc = None, skipFunc = None, allowLeafMoves = True, calculateTrimmable = True):
+		# allow exploration again
+		self.finishingExploration = True
+		logging.info("\n\nAttempting Optimal EXPLORATION (tm) for turns {}:\n".format(turns))
+		startTime = time.time()
+		generalPlayer = self._map.players[self.general.player]
+		searchingPlayer = self.general.player
+		if negativeTiles == None:
+			negativeTiles = set()
+		else:
+			negativeTiles = negativeTiles.copy()
+		for tile in negativeTiles:
+			logging.info("negativeTile: {}".format(tile.toString()))
+
+
+		distSource = [self.general]
+		if self.target_player_gather_path != None:
+			distSource = self.target_player_gather_path.tileList
+		distMap = build_distance_map(self._map, distSource)
+		
+		
+		#skipFunc(next, nextVal). Not sure why this is 0 instead of 1, but 1 breaks it. I guess the 1 is already subtracted
+		if not skipFunc:
+			def skip_after_out_of_army(nextTile, nextVal):
+				wastedMoves, pathPriorityDivided, negArmyRemaining, negRevealedCount, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, revealedSoFar = nextVal
+				if negArmyRemaining >= 0:
+					return True
+				if wastedMoves > 6:
+					return True
+				return False
+			skipFunc = skip_after_out_of_army
+
+		if not valueFunc:
+			def value_priority_army_dist(currentTile, priorityObject):
+				wastedMoves, pathPriorityDivided, negArmyRemaining, negRevealedCount, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, revealedSoFar = priorityObject
+				# negative these back to positive
+				posPathPrio = 0-pathPriorityDivided
+				#return (posPathPrio, 0-armyRemaining, distSoFar)
+
+				dist = distSoFar + 2
+				return (0-(negRevealedCount + enemyTiles * 2 + neutralTiles + pathPriority) / dist,
+							posPathPrio, 
+							distSoFar)
+			valueFunc = value_priority_army_dist
+
+
+		if not priorityFunc:
+			def default_priority_func(nextTile, currentPriorityObject):
+				wastedMoves, pathPriorityDivided, negArmyRemaining, negRevealedCount, enemyTiles, neutralTiles, pathPriority, distSoFar, tileSetSoFar, revealedSoFar = currentPriorityObject
+				armyRemaining = 0 - negArmyRemaining
+				nextTileSet = tileSetSoFar.copy()
+				distSoFar += 1
+				# weight tiles closer to the target player higher
+				addedPriority = -7 - max(3, distMap[nextTile.x][nextTile.y] / 4)
+				if nextTile not in nextTileSet:
+					armyRemaining -= 1
+					releventAdjacents = where(nextTile.adjacents, lambda adjTile: adjTile not in revealedSoFar and adjTile not in tileSetSoFar)
+					revealedCount = count(releventAdjacents, lambda adjTile: not adjTile.discovered)
+					negRevealedCount -= revealedCount
+					if negativeTiles == None or (nextTile not in negativeTiles):
+						if (searchingPlayer == nextTile.player):
+							armyRemaining += nextTile.army
+						else:
+							armyRemaining -= nextTile.army
+					nextTileSet.add(nextTile)
+					# enemytiles or enemyterritory undiscovered tiles
+					if self.targetPlayer != -1 and (nextTile.player == self.targetPlayer or (not nextTile.visible and self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer)):
+						if nextTile.player == -1:
+							# points for maybe capping target tiles
+							addedPriority += 4
+							enemyTiles -= 0.5
+							neutralTiles -= 0.5
+							# treat this tile as if it is at least 1 cost
+							armyRemaining -= 1
+						else:
+							# points for capping target tiles
+							addedPriority += 6
+							enemyTiles -= 1
+
+						## points for locking all nearby enemy tiles down
+						#numEnemyNear = count(nextTile.adjacents, lambda adjTile: adjTile.player == self.targetPlayer)
+						#numEnemyLocked = count(releventAdjacents, lambda adjTile: adjTile.player == self.targetPlayer)
+						##    for every other nearby enemy tile on the path that we've already included in the path, add some priority
+						#addedPriority += (numEnemyNear - numEnemyLocked) * 12
+					elif nextTile.player == -1:
+						if nextTile.isCity: #TODO and is reasonably placed?
+							neutralTiles -= 12
+						# we'd prefer to be killing enemy tiles, yeah?
+						wastedMoves += 0.2
+						neutralTiles -= 1
+						# points for capping tiles in general
+						addedPriority += 2
+						# points for taking neutrals next to enemy tiles
+						numEnemyNear = count(nextTile.moveable, lambda adjTile: adjTile not in revealedSoFar and adjTile.player == self.targetPlayer)
+						if numEnemyNear > 0:
+							addedPriority += 1
+					else: # our tiles and non-target enemy tiles get negatively weighted
+						#addedPriority -= 2
+						# 0.7
+						wastedMoves += 0.5
+					# points for discovering new tiles
+					addedPriority += revealedCount
+					if self.armyTracker.emergenceLocationMap[self.targetPlayer][nextTile.x][nextTile.y] > 0 and not nextTile.visible:
+						addedPriority += 2 * (self.armyTracker.emergenceLocationMap[self.targetPlayer][nextTile.x][nextTile.y] ** 0.5)
+					## points for revealing tiles in the fog
+					#addedPriority += count(releventAdjacents, lambda adjTile: not adjTile.visible)
+				else:
+					wastedMoves += 1
+				nextRevealedSet = revealedSoFar.copy()
+				for adj in where(nextTile.adjacents, lambda tile: not tile.discovered):
+					nextRevealedSet.add(adj)
+				newPathPriority = pathPriority - addedPriority
+				#if generalPlayer.tileCount < 46:
+				#	logging.info("nextTile {}, newPathPriority / distSoFar {:.2f}, armyRemaining {}, newPathPriority {}, distSoFar {}, len(nextTileSet) {}".format(nextTile.toString(), newPathPriority / distSoFar, armyRemaining, newPathPriority, distSoFar, len(nextTileSet)))
+				return (wastedMoves, newPathPriority / distSoFar, 0-armyRemaining, negRevealedCount, enemyTiles, neutralTiles, newPathPriority, distSoFar, nextTileSet, nextRevealedSet)
+			priorityFunc = default_priority_func
+		
+		if not initFunc:
+			def initial_value_func_default(tile):
+				startingSet = set()
+				startingSet.add(tile)
+				startingAdjSet = set()
+				for adj in tile.adjacents:
+					startingAdjSet.add(adj)
+				return (0, 10, 0-tile.army, 0, 0, 0, 0, 0, startingSet, startingAdjSet)
+			initFunc = initial_value_func_default
+
+		if turns <= 0:
+			logging.info("turns <= 0 in optimal_expansion? Setting to 50")
+			turns = 50
+		remainingTurns = turns
+		sortedTiles = sorted(list(where(generalPlayer.tiles, lambda tile: tile.army > 3)), key = lambda tile: 0 - tile.army)
+		paths = []
+		fullCutoff = 3
+		cutoffFactor = 1
+		player = self._map.players[self.general.player]
+		logStuff = True
+		if player.tileCount > 70 or turns > 25:
+			logging.info("Not doing algorithm logging for expansion due to player tilecount > 70 or turn count > 25")
+			logStuff = False
+		expandIntoNeutralCities = False
+		if player.standingArmy / player.tileCount > 2:
+			logging.info("Allowing expansion into neutral cities")
+			expandIntoNeutralCities = True
+		# BACKPACK THIS EXPANSION! Don't stop at remainingTurns 0... just keep finding paths until out of time, then knapsack them
+
+		# Switch this up to use more tiles at the start, just removing the first tile in each path at a time. Maybe this will let us find more 'maximal' paths?
+
+
+		while remainingTurns > 0 and cutoffFactor <= fullCutoff and len(sortedTiles) > 0:
+			timeUsed = time.time() - startTime
+			# Stages:
+			# first 0.1s, use large tiles and shift smaller. (do nothing)
+			# second 0.1s, use all tiles (to make sure our small tiles are included)
+			# third 0.1s - knapsack optimal stuff outside this loop i guess?
+			if timeUsed > 0.05:
+				logging.info("timeUsed > 0.05... Breaking loop and knapsacking...")
+				break
+			if timeUsed > 0.03:
+				logging.info("timeUsed > 0.03... Switching to using all tiles, cutoffFactor = fullCutoff...")
+				cutoffFactor = fullCutoff
+
+			#startIdx = max(0, ((cutoffFactor - 1) * len(sortedTiles))//fullCutoff)
+			startIdx = 0
+			endIdx = min(len(sortedTiles), (cutoffFactor * len(sortedTiles))//fullCutoff + 1)
+			logging.info("startIdx {} endIdx {}".format(startIdx, endIdx))
+			tilePercentile = sortedTiles[startIdx:endIdx]
+			# filter out the bottom value of tiles (will filter out 1's in the early game, or the remaining 2's, etc)
+			tilesLargerThanAverage = where(tilePercentile, lambda tile: tile.army > tilePercentile[-1].army)
+			tilesLargerThanAverage = tilePercentile
+			logging.info("cutoffFactor {}/{}, largestTile {}: {} army, smallestTile {}: {} army".format(cutoffFactor, fullCutoff, tilePercentile[0].toString(), tilePercentile[0].army, tilePercentile[-1].toString(), tilePercentile[-1].army))
+
+			# hack,  see what happens TODO
+			#tilesLargerThanAverage = where(generalPlayer.tiles, lambda tile: tile.army > 1)
+			#logging.info("Filtered for tilesLargerThanAverage with army > {}, found {} of them".format(tilePercentile[-1].army, len(tilesLargerThanAverage)))
+			startDict = {}
+			for i, tile in enumerate(tilesLargerThanAverage):
+				# skip tiles we've already used or intentionally ignored
+				if tile in negativeTiles:
+					continue
+				#self.mark_tile(tile, 10)
+
+				initVal = initFunc(tile)
+				#wastedMoves, pathPriorityDivided, armyRemaining, pathPriority, distSoFar, tileSetSoFar 
+				# 10 because it puts the tile above any other first move tile, so it gets explored at least 1 deep...
+				startDict[tile] = (initVal, 0)
+			path = breadth_first_dynamic_max(self._map, startDict, value_priority_army_dist, 0.2, remainingTurns, noNeutralCities = (not expandIntoNeutralCities), negativeTiles = negativeTiles, 
+									searchingPlayer = self.general.player,
+									priorityFunc = priorityFunc,
+									useGlobalVisitedSet = True,
+									skipFunc = skipFunc,
+									logResultValues = logStuff)
+
+			
+			if path:
+				logging.info("Path found for maximizing army usage? Duration {:.3f} path {}".format(time.time() - startTime, path.toString()))	
+				node = path.start
+				# BYPASSED THIS BECAUSE KNAPSACK...
+				# remainingTurns -= path.length
+				tilesGrabbed = 0
+				visited = set()
+				friendlyCityCount = 0
+				# only add the first tile in the path
+				negativeTiles.add(node.tile)
+				while node != None:
+					if node.tile in startDict:
+						del startDict[node.tile]
+					if node.tile not in negativeTiles and node.tile not in visited:
+						if node.tile.player == self.targetPlayer or (not node.tile.visible and self.territories.territoryMap[node.tile.x][node.tile.y] == self.targetPlayer):
+							# slight boost to taking opp tiles
+							tilesGrabbed += 2.2
+						elif node.tile.player == -1:
+							tilesGrabbed += 1
+						elif node.tile.player != self.general.player:
+							# deprioritize non-target-enemy tiles, but take them if necessary
+							tilesGrabbed += 0.2
+						visited.add(node.tile)
+					if node.tile.player == self.general.player and (node.tile.isCity or node.tile.isGeneral):
+						friendlyCityCount += 1
+					# this tile is now worth nothing because we already intend to use it ?
+					# negativeTiles.add(node.tile)
+					node = node.next
+				sortedTiles.remove(path.start.tile)
+				paths.append((friendlyCityCount, tilesGrabbed, path))
+			else:
+				cutoffFactor += 1
+				logging.info("Didn't find a super duper cool optimized expansion pathy thing for remainingTurns {}, cutoffFactor {}. Incrementing cutoffFactor :(".format(remainingTurns, cutoffFactor))
+				
+
+		alpha = 75
+		minAlpha = 50
+		alphaDec = 2
+		trimmable = {}
+
+		# build knapsack weights and values
+		weights = [pathTuple[2].length for pathTuple in paths]
+		values = [pathTuple[1] for pathTuple in paths]
+		logging.info("Feeding the following paths into knapsackSolver at turns {}...".format(turns))
+		for i, pathTuple in enumerate(paths):
+			friendlyCityCount, tilesCaptured, curPath = pathTuple
+			logging.info("{}:  cap {} length {} path {}".format(i, tilesCaptured, curPath.length, curPath.toString()))
+
+		totalValue, maxKnapsackedPaths = solve_knapsack(paths, turns, weights, values)
+		logging.info("maxKnapsackedPaths value {} length {},".format(totalValue, len(maxKnapsackedPaths)))
+
+		path = None
+		if len(maxKnapsackedPaths) > 0:
+			maxVal = (-100, -1)
+
+			# Select which of the knapsack paths to move first
+			for pathTuple in maxKnapsackedPaths:
+				friendlyCityCount, tilesCaptured, curPath = pathTuple
+
+				thisVal = (0-friendlyCityCount, tilesCaptured / (curPath.length))
+				if thisVal > maxVal:
+					maxVal = thisVal
+					path = curPath
+					logging.info("no way this works, evaluation [{}], path {}".format('], ['.join(str(x) for x in maxVal), path.toString()))					
+					
+				#draw other paths darker
+				alpha = 150
+				minAlpha = 150
+				alphaDec = 0
+				self.viewInfo.paths.appendleft(PathColorer(curPath, 50, 51, 204, alpha, alphaDec, minAlpha))
+			logging.info("EXPLORATION PLANNED HOLY SHIT? Duration {:.3f}, path {}".format(time.time() - startTime, path.toString()))
+			#draw maximal path darker
+			alpha = 255
+			minAlpha = 200
+			alphaDec = 0
+			self.viewInfo.paths = deque(where(self.viewInfo.paths, lambda pathCol: pathCol.path != path))
+			self.viewInfo.paths.appendleft(PathColorer(path, 55, 100, 200, alpha, alphaDec, minAlpha))
+		else:
+			logging.info("No EXPLORATION plan.... :( Duration {:.3f},".format(time.time() - startTime))
+
+		return path
+		
+	
+
+
+
+	# TODO
 	def explore_target_player_undiscovered(self, negativeTiles, targetArmy = 1):
 		if self._map.turn < 100 or self.targetPlayer == -1 or self._map.generals[self.targetPlayer] != None:
-			return None
+			return None	
+		if self.explored_this_turn:
+			logging.info("(skipping new exploration because already explored this turn)")
+		else:
+			logging.info("- - - - - EXPLORE_TARGET_PLAYER_UNDISCOVERED (NEW) - - - - -")	
+			self.explored_this_turn = True
+			path = self.get_optimal_exploration(self.timings.cycleTurns - (self._map.turn + self.timings.offsetTurns) % self.timings.cycleTurns, negativeTiles)
+			if path:
+				logging.info("Oh no way, explore found a path lol? {}".format(path.toString()))
+				tilesRevealed = set()
+				score = 0
+				node = path.start
+				while node != None:
+					if not node.tile.discovered and self.armyTracker.emergenceLocationMap[self.targetPlayer][node.tile.x][node.tile.y] > 0:
+						score += self.armyTracker.emergenceLocationMap[self.targetPlayer][node.tile.x][node.tile.y] ** 0.5
+					for adj in node.tile.adjacents:
+						if not adj.discovered:
+							tilesRevealed.add(adj)
+					node = node.next
+				revealedPerMove = len(tilesRevealed) / path.length
+				scorePerMove = score / path.length
+				logging.info("tilesRevealed {} ({:.2f}), Score {} ({:.2f}), path.length {}".format(len(tilesRevealed), revealedPerMove, score, scorePerMove, path.length))
+				if ((revealedPerMove > 0.5 and scorePerMove > 4)
+							or (revealedPerMove > 0.8 and scorePerMove > 1)
+							or revealedPerMove > 1.5):
+					if path.length > 2:
+						path = path.get_subsegment(2)
+					return path
+				else:
+					logging.info("path wasn't good enough, discarding")
 
-		logging.info("- - - - - EXPLORE_TARGET_PLAYER_UNDISCOVERED (NEW) - - - - -")		
-
+		logging.info("- - - - - EXPLORE_TARGET_PLAYER_UNDISCOVERED (OLD) :( - - - - -")	
 		def priority_func_non_all_in(nextTile, currentPriorityObject):
 			distance, negTileTakenScore, negArmyFound = currentPriorityObject
 			tilePlayer = nextTile.player
@@ -2854,7 +3259,7 @@ class EklipZBot(object):
 
 
 	def calculate_general_danger(self):
-		depth = self.distance_from_general(self.targetPlayerExpectedGeneralLocation) // 2 + 2
+		depth = (self.distance_from_general(self.targetPlayerExpectedGeneralLocation) * 3) // 4
 		if (depth < 6):
 			depth = 6
 		self.dangerAnalyzer.analyze(self.general, depth, self.armyTracker.armies)
@@ -3466,7 +3871,7 @@ class EklipZBot(object):
 
 	what about estimated cost is distance to 
 	'''
-	def get_optimal_expansion(self, turns, negativeTiles = None, valueFunc = None, priorityFunc = None, initFunc = None, skipFunc = None, allowLeafMoves = True):
+	def get_optimal_expansion(self, turns, negativeTiles = None, valueFunc = None, priorityFunc = None, initFunc = None, skipFunc = None, allowLeafMoves = True, calculateTrimmable = True):
 		# allow exploration again
 		self.finishingExploration = True
 		logging.info("\n\nAttempting Optimal Expansion (tm) for turns {}:\n".format(turns))
@@ -3502,8 +3907,9 @@ class EklipZBot(object):
 				# negative these back to positive
 				posPathPrio = 0-pathPriorityDivided
 				#return (posPathPrio, 0-armyRemaining, distSoFar)
-				return (0-(enemyTiles*2 + neutralTiles) / (1 + distSoFar), 
-							0-enemyTiles / (1 + distSoFar), 
+				dist = distSoFar + 2
+				return (0-(enemyTiles*2 + neutralTiles) / (dist), 
+							0-enemyTiles / (dist), 
 							posPathPrio, 
 							distSoFar)
 			valueFunc = value_priority_army_dist
@@ -3522,6 +3928,7 @@ class EklipZBot(object):
 				armyRemaining = 0 - negArmyRemaining
 				nextTileSet = tileSetSoFar.copy()
 				distSoFar += 1
+				# weight tiles closer to the target player higher
 				addedPriority = -7 - max(3, distMap[nextTile.x][nextTile.y] / 4)
 				if nextTile not in nextTileSet:
 					armyRemaining -= 1
@@ -3533,16 +3940,27 @@ class EklipZBot(object):
 							armyRemaining -= nextTile.army
 					nextTileSet.add(nextTile)
 					# enemytiles or enemyterritory undiscovered tiles
-					if (nextTile.player != -1 and nextTile.player == self.targetPlayer) or (not nextTile.visible and self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer):
-						enemyTiles -= 1
-						# points for capping target tiles
-						addedPriority += 6
+					if self.targetPlayer != -1 and (nextTile.player == self.targetPlayer or (not nextTile.visible and self.territories.territoryMap[nextTile.x][nextTile.y] == self.targetPlayer)):
+						if nextTile.player == -1:
+							# points for maybe capping target tiles
+							addedPriority += 4
+							enemyTiles -= 0.5
+							neutralTiles -= 0.5
+							# treat this tile as if it is at least 1 cost
+							armyRemaining -= 1
+						else:
+							# points for capping target tiles
+							addedPriority += 6
+							enemyTiles -= 1
+
 						## points for locking all nearby enemy tiles down
 						#numEnemyNear = count(nextTile.adjacents, lambda adjTile: adjTile.player == self.targetPlayer)
 						#numEnemyLocked = count(releventAdjacents, lambda adjTile: adjTile.player == self.targetPlayer)
 						##    for every other nearby enemy tile on the path that we've already included in the path, add some priority
 						#addedPriority += (numEnemyNear - numEnemyLocked) * 12
 					elif nextTile.player == -1:
+						if nextTile.isCity: #TODO and is reasonably placed?
+							neutralTiles -= 12
 						# we'd prefer to be killing enemy tiles, yeah?
 						wastedMoves += 0.2
 						neutralTiles -= 1
@@ -3553,7 +3971,7 @@ class EklipZBot(object):
 						if numEnemyNear > 0:
 							addedPriority += 1
 					else: # our tiles and non-target enemy tiles get negatively weighted
-						addedPriority -= 2
+						#addedPriority -= 2
 						# 0.7
 						wastedMoves += 0.5
 					# points for discovering new tiles
@@ -3662,11 +4080,11 @@ class EklipZBot(object):
 					if node.tile in startDict:
 						del startDict[node.tile]
 					if node.tile not in negativeTiles and node.tile not in visited:
-						if node.tile.player == -1:
-							tilesGrabbed += 1
-						elif node.tile.player == self.targetPlayer:
+						if node.tile.player == self.targetPlayer or (not node.tile.visible and self.territories.territoryMap[node.tile.x][node.tile.y] == self.targetPlayer):
 							# slight boost to taking opp tiles
-							tilesGrabbed += 2.5
+							tilesGrabbed += 2.2
+						elif node.tile.player == -1:
+							tilesGrabbed += 1
 						elif node.tile.player != self.general.player:
 							# deprioritize non-target-enemy tiles, but take them if necessary
 							tilesGrabbed += 0.2
@@ -3680,7 +4098,7 @@ class EklipZBot(object):
 				paths.append((friendlyCityCount, tilesGrabbed, path))
 			else:
 				cutoffFactor += 1
-				logging.info("Didn't find a super duper cool optimized expansion pathy thing for remainingTurns {}, cutoffFactor {} :(".format(remainingTurns, cutoffFactor))
+				logging.info("Didn't find a super duper cool optimized expansion pathy thing for remainingTurns {}, cutoffFactor {}. Incrementing cutoffFactor :(".format(remainingTurns, cutoffFactor))
 				
 		#expansionGather = greedy_backpack_gather(self._map, tilesLargerThanAverage, turns, None, valueFunc, baseCaseFunc, negativeTiles, None, self.general.player, priorityFunc, skipFunc = None)
 		if allowLeafMoves:
@@ -3708,18 +4126,19 @@ class EklipZBot(object):
 		minAlpha = 50
 		alphaDec = 2
 		trimmable = {}
-		for pathTuple in paths:
-			friendlyCityCount, tilesCaptured, path = pathTuple
-			tailNode = path.tail
-			trimCount = 0
-			while tailNode.tile.player == -1 and self.territories.territoryMap[tailNode.tile.x][tailNode.tile.y] != self.targetPlayer:
-				trimCount += 1
-				tailNode = tailNode.prev
-			if trimCount > 0:
-				trimmable[path.start.tile] = (path, trimCount)
+		if calculateTrimmable:
+			for pathTuple in paths:
+				friendlyCityCount, tilesCaptured, path = pathTuple
+				tailNode = path.tail
+				trimCount = 0
+				while tailNode.tile.player == -1 and self.territories.territoryMap[tailNode.tile.x][tailNode.tile.y] != self.targetPlayer:
+					trimCount += 1
+					tailNode = tailNode.prev
+				if trimCount > 0:
+					trimmable[path.start.tile] = (path, trimCount)
 
-			self.viewInfo.bottomRightGridText[path.start.tile.x][path.start.tile.y] = tilesCaptured
-			self.viewInfo.paths.appendleft(PathColorer(path, 180, 51, 254, alpha, alphaDec, minAlpha))
+				self.viewInfo.bottomRightGridText[path.start.tile.x][path.start.tile.y] = tilesCaptured
+				self.viewInfo.paths.appendleft(PathColorer(path, 180, 51, 254, alpha, alphaDec, minAlpha))
 
 		# build knapsack weights and values
 		weights = [pathTuple[2].length for pathTuple in paths]
@@ -3744,20 +4163,21 @@ class EklipZBot(object):
 					totalTrimmable += possibleTrim
 			logging.info("totalTrimmable! {}".format(totalTrimmable))
 
-			trimmableStart = time.time()
-			trimRange = min(10, 1 + totalTrimmable)
-			# see if there are better knapsacks if we trim the ends off some of these
-			maxKnapsackVal = totalValue
-			for i in range(trimRange):
-				otherValue, otherKnapsackedPaths = solve_knapsack(paths, turns + i, weights, values)
-				# offset by i to compensate for the skipped moves
-				otherValueWeightedByTrim = otherValue - i
-				logging.info("i {} - otherKnapsackedPaths value {} weightedValue {} length {}".format(i, otherValue, otherValueWeightedByTrim, len(otherKnapsackedPaths)))
-				if (otherValueWeightedByTrim > maxKnapsackVal):
-					maxKnapsackVal = otherValueWeightedByTrim
-					maxKnapsackedPaths = otherKnapsackedPaths
-					logging.info("NEW MAX {}".format(maxKnapsackVal))					
-			logging.info("(Time spent on {} trimmable iterations: {:.3f})".format(trimRange, time.time() - trimmableStart))
+			if totalTrimmable > 0:
+				trimmableStart = time.time()
+				trimRange = min(10, 1 + totalTrimmable)
+				# see if there are better knapsacks if we trim the ends off some of these
+				maxKnapsackVal = totalValue
+				for i in range(trimRange):
+					otherValue, otherKnapsackedPaths = solve_knapsack(paths, turns + i, weights, values)
+					# offset by i to compensate for the skipped moves
+					otherValueWeightedByTrim = otherValue - i
+					logging.info("i {} - otherKnapsackedPaths value {} weightedValue {} length {}".format(i, otherValue, otherValueWeightedByTrim, len(otherKnapsackedPaths)))
+					if (otherValueWeightedByTrim > maxKnapsackVal):
+						maxKnapsackVal = otherValueWeightedByTrim
+						maxKnapsackedPaths = otherKnapsackedPaths
+						logging.info("NEW MAX {}".format(maxKnapsackVal))					
+				logging.info("(Time spent on {} trimmable iterations: {:.3f})".format(trimRange, time.time() - trimmableStart))
 
 			# Select which of the knapsack paths to move first
 			for pathTuple in maxKnapsackedPaths:

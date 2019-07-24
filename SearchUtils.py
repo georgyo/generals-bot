@@ -1391,7 +1391,8 @@ def solve_knapsack(items, capacity, weights, values):
 	includedItems = []
 	w = capacity 
 	for i in range(n, 0, -1): 
-		if res <= 0: 
+		# lol 0.1 because float rounding error??? 
+		if res <= 0.1: 
 			break
 		# either the result comes from the 
 		# top (K[i-1][w]) or from (val[i-1] 
@@ -1402,7 +1403,7 @@ def solve_knapsack(items, capacity, weights, values):
 			continue
 		else: 
 			# This item is included. 
-			logging.info("item at index {} with value {} and weight {} was included... adding it to output".format(i - 1, values[i-1], weights[i-1]))
+			logging.info("item at index {} with value {} and weight {} was included... adding it to output. (Res {})".format(i - 1, values[i-1], weights[i-1], res))
 			includedItems.append(items[i-1])
 			  
 			# Since this weight is included 
