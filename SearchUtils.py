@@ -520,7 +520,8 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 					   incrementBackward = False,
 					   preferNeutral = False,
 					   viewInfo = None,
-					   distPriorityMap = None):
+					   distPriorityMap = None,
+					   useTrueValueGathered = False):
 	'''
 	startTiles is list of tiles that will be weighted with baseCaseFunc, OR dict (startPriorityObject, distance) = startTiles[tile]
 	valueFunc is (currentTile, priorityObject) -> POSITIVELY weighted value object
@@ -556,25 +557,31 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	if valueFunc == None:
 		logging.info("Using default valueFunc")
 		def default_value_func_max_gathered_per_turn(currentTile, priorityObject):
-			(realDist, negArmySum, negDistanceSum, dist, xSum, ySum) = priorityObject
-			value = -1 * (negArmySum / (max(1, realDist)))
-			return (value, 0-negDistanceSum, 0-negArmySum, realDist, 0-xSum, 0-ySum)
+			(realDist, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum) = priorityObject
+			value = -1000
+			if negArmySum < 0:
+				value = 0 - (negGatheredSum / (max(1, realDist)))
+			return (value, 0-negDistanceSum, 0-negGatheredSum, realDist, 0-xSum, 0-ySum)
 		valueFunc = default_value_func_max_gathered_per_turn
 
 		
 	if priorityFunc == None:
 		logging.info("Using default priorityFunc")
 		def default_priority_func(nextTile, currentPriorityObject):
-			(realDist, negArmySum, negDistanceSum, dist, xSum, ySum) = currentPriorityObject
+			(realDist, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum) = currentPriorityObject
 			negArmySum += 1
+			negGatheredSum += 1
 			if (nextTile not in negativeTiles):
 				if (searchingPlayer == nextTile.player):
 					negArmySum -= nextTile.army
+					negGatheredSum -= nextTile.army
 					# # this broke gather approximation, couldn't predict actual gather values based on this
 					#if nextTile.isCity:
 					#	negArmySum -= turns // 3
 				else:
 					negArmySum += nextTile.army
+					if useTrueValueGathered:
+						negGatheredSum += nextTile.army
 			#if nextTile.player != searchingPlayer and not (nextTile.player == -1 and nextTile.isCity):
 			#	negDistanceSum -= 1
 			# hacks us prioritizing further away tiles
@@ -582,7 +589,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 				negDistanceSum -= distPriorityMap[nextTile.x][nextTile.y]
 				
 			#logging.info("prio: nextTile {} got realDist {}, negNextArmy {}, negDistanceSum {}, newDist {}, xSum {}, ySum {}".format(nextTile.toString(), realDist + 1, 0-nextArmy, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y))
-			return (realDist + 1, negArmySum, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y)
+			return (realDist + 1, negGatheredSum, negArmySum, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y)
 		priorityFunc = default_priority_func
 		
 
@@ -596,7 +603,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 				startArmy = tile.army
 			
 			logging.info("tile {} got base case startArmy {}, startingDist {}".format(tile.toString(), startArmy, startingDist))
-			return (0, startArmy, 0, startingDist, tile.x, tile.y)
+			return (0, 0, startArmy, 0, startingDist, tile.x, tile.y)
 		baseCaseFunc = default_base_case_func
 		
 
@@ -744,7 +751,7 @@ def get_tree_move(gathers, priorityFunc, valueFunc):
 		if len(curGather.children) == 0:
 			# WE FOUND OUR FIRST MOVE!
 			thisValue = valueFunc(curGather.tile, curPrio)
-			if highestValue == None or thisValue > highestValue:
+			if curGather.fromTile != None and (highestValue == None or thisValue > highestValue):
 				highestValue = thisValue
 				highestValueMove = Move(curGather.tile, curGather.fromTile)
 				logging.info("new highestValueMove {}!".format(highestValueMove.toString()))
@@ -752,7 +759,7 @@ def get_tree_move(gathers, priorityFunc, valueFunc):
 			nextPrio = priorityFunc(gather.tile, curPrio)
 			q.put((nextPrio, gather))
 	if highestValueMove == None:
-		raise AssertionError("No highestValueMove found?")
+		return None
 	logging.info("highestValueMove in get_tree_move was {}!".format(highestValueMove.toString()))
 	return highestValueMove
 
@@ -769,7 +776,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 					   preferNeutral = False,
 					   useGlobalVisitedSet = True,
 					   logResultValues = False,
-					   noLog = False):
+					   noLog = False,
+					   includePathValue = False):
 	'''
 	startTiles dict is (startPriorityObject, distance) = startTiles[tile]
 	goalFunc is (currentTile, priorityObject) -> True or False
@@ -908,6 +916,8 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 	if not noLog:
 		logging.info("BFS-DYNAMIC-MAX ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
+		if includePathValue:
+			return None, None
 		return None
 		
 	tile = endNode
@@ -939,10 +949,14 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 	if pathObject.length == 0:
 		if not noLog:
 			logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}, returning NONE!\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
+		if includePathValue:
+			return None, None
 		return None
 	else:		
 		if not noLog:
 			logging.info("BFS-DYNAMIC-MAX FOUND PATH LENGTH {} VALUE {}\n   {}".format(pathObject.length, pathObject.value, pathObject.toString()))
+	if includePathValue:
+		return pathObject, maxValue
 	return pathObject
 
 
@@ -1392,7 +1406,13 @@ def solve_knapsack(items, capacity, weights, values):
 	w = capacity 
 	for i in range(n, 0, -1): 
 		# lol 0.1 because float rounding error??? 
-		if res <= 0.1: 
+		if res <= 0: 
+			break
+		if i == 0:
+			logging.info("i == 0 in knapsack items determiner?? res {} i {} w {}".format(res, i, w))
+			break
+		if w < 0:
+			logging.info("w < 0 in knapsack items determiner?? res {} i {} w {}".format(res, i, w))
 			break
 		# either the result comes from the 
 		# top (K[i-1][w]) or from (val[i-1] 

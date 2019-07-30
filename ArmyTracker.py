@@ -80,6 +80,10 @@ class Army(object):
 	def toString(self):
 		return "{} ({})".format(self.tile.toString(), self.name)
 
+class PlayerAggressionTracker(object):
+	def __init__(self, index):
+		self.player = index
+
 class ArmyTracker(object):
 	def __init__(self, map):
 		self.map = map
@@ -94,6 +98,7 @@ class ArmyTracker(object):
 		self.fogPaths = []
 		self.emergenceLocationMap = [[[0 for x in range(self.map.rows)] for y in range(self.map.cols)] for z in range(len(self.map.players))]
 		self.notify_unresolved_army_emerged = []
+		self.player_aggression_ratings = [PlayerAggressionTracker(z) for z in range(len(self.map.players))]
 
 	# distMap used to determine how to move armies under fog
 	def scan(self, distMap, lastMove):
@@ -522,7 +527,7 @@ class ArmyTracker(object):
 
 
 	def find_fog_source(self, tile):
-		if len(where(tile.moveable, lambda adj: not adj.isobstacle() and not adj.visible)) == 0:
+		if len(where(tile.moveable, lambda adj: not adj.isobstacle() and (adj.delta.gainedSight or not adj.visible))) == 0:
 			logging.info("        For new army at tile {} there were no adjacent fogBois, no search".format(tile.toString()))
 			return None
 		distPowFactor = 0.3

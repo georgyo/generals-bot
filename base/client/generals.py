@@ -28,7 +28,10 @@ class Generals(object):
 		self.bot_key = "sd09fjd203i0ejwi"
 		self._lock = threading.RLock()
 		self.lastCommunicationTime = time.time()
-		self.cursewords = { 'pussy', 'fuck', 'fk ', ' fk', 'cunt', 'bitch', 'ass', 'nigger', 'of shit', 'dick', 'cock', 'kill yourself', ' kys', 'kys ', ' fag', 'fag ', 'faggot', 'stupid' }
+		# clearly, I do not condone racist / sexist words or mean comments. The bot does not say any of these. 
+		# These are used to trigger a passive aggressive response from the bot to players who call it names etc. 
+		# Just making that clear since this is on my github...
+		self.cursewords = { 'pussy', 'fuck', 'fk ', ' fk', 'cunt', 'bitch', 'ass', 'of shit', 'dick', 'cock', 'kill yourself', ' kys', 'kys ', ' fag', 'fag ', 'faggot', 'stupid' }
 		_spawn(self._start_killswitch_timer)
 		logging.debug("Creating connection")
 		# try:
