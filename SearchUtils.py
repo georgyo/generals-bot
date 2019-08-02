@@ -158,7 +158,7 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 					visited[next.x][next.y][newDist] = (nextArmy, current)
 				frontier.put(((newDist, 0 - nextArmy), next, newDist, nextArmy, newVisitedSet, goalInc))
 	if not noLog:
-		logging.info("BFS DEST SEARCH ITERATIONS {}, DURATION: {}, DEPTH: {}, FOUNDDIST: {}".format(iter, time.time() - start, depthEvaluated, foundDist))
+		logging.info("BFS DEST SEARCH ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}, FOUNDDIST: {}".format(iter, time.time() - start, depthEvaluated, foundDist))
 	if foundDist < 0:
 		return None
 		
@@ -309,7 +309,7 @@ def a_star_kill(map, startTiles, goal, maxTime = 0.1, maxDepth = 20, restriction
 					frontier.put((priority, next))
 					#logging.info("a* enqueued next")
 					came_from[next] = current
-	logging.info("A* KILL SEARCH ITERATIONS {}, DURATION: {}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+	logging.info("A* KILL SEARCH ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if not goal in came_from:
 		return None
 
@@ -473,7 +473,7 @@ def breadth_first_dynamic(map, startTiles, goalFunc, maxTime = 0.2, maxDepth = 1
 					continue
 				frontier.put((nextVal, newDist, next, current))
 
-	logging.info("BFS-DYNAMIC ITERATIONS {}, DURATION: {}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
+	logging.info("BFS-DYNAMIC ITERATIONS {}, DURATION: {:.3f}, DEPTH: {}".format(iter, time.time() - start, depthEvaluated))
 	if foundDist >= 1000:
 		return None
 		
@@ -1363,7 +1363,7 @@ def breadth_first_foreach_dist(map, startTiles, maxDepth, foreachFunc, negativeF
 
 
 
-def build_distance_map(map, startTiles):
+def build_distance_map(map, startTiles, skipTiles = None):
 	distanceMap = [[INF for x in range(map.rows)] for y in range(map.cols)]
 		
 	def bfs_dist_mapper(tile, army, dist):
@@ -1371,7 +1371,7 @@ def build_distance_map(map, startTiles):
 			distanceMap[tile.x][tile.y] = dist
 		return False
 			
-	breadth_first_find_queue(map, startTiles, bfs_dist_mapper, 0.1, 250, noNeutralCities=True)
+	breadth_first_find_queue(map, startTiles, bfs_dist_mapper, 0.1, 250, noNeutralCities=True, skipTiles = skipTiles)
 	return distanceMap
 
 

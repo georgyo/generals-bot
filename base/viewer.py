@@ -49,6 +49,9 @@ SCORES_ROW_HEIGHT = 33
 INFO_ROW_HEIGHT = 35
 PLUS_DEPTH = 9
 SQUARE = Rect(0, 0, CELL_WIDTH, CELL_HEIGHT)
+SQUARE_1 = Rect(1, 1, CELL_WIDTH - 2, CELL_HEIGHT - 2)
+SQUARE_2 = Rect(2, 2, CELL_WIDTH - 4, CELL_HEIGHT - 4)
+SQUARE_SMALLER_INNER = Rect(0, 0, CELL_WIDTH - 1, CELL_HEIGHT - 1)
 
 
 class GeneralsViewer(object):
@@ -290,6 +293,10 @@ class GeneralsViewer(object):
 			# Draw path
 			self.drawGathers()
 			
+			
+			self.draw_chokes()
+			self.draw_armies()
+
 			while len(self._map.ekBot.viewInfo.paths) > 0:
 				pColorer = self._map.ekBot.viewInfo.paths.pop()	
 				self.draw_path(pColorer.path, pColorer.color[0], pColorer.color[1], pColorer.color[2], pColorer.alpha, pColorer.alphaDecreaseRate, pColorer.alphaMinimum)
@@ -400,8 +407,6 @@ class GeneralsViewer(object):
 							#print("down " + str(tile.x) + "," + str(tile.y))
 							pygame.draw.polygon(self._screen, GRAY_DARK, [(pos_left, pos_top + 3 * CELL_HEIGHT / 4), (pos_left + CELL_WIDTH, pos_top + 3 * CELL_HEIGHT / 4), (pos_left + CELL_WIDTH / 2, pos_top + 5 * CELL_HEIGHT / 4)])			
 
-			
-			self.draw_armies()
 
 			#print("drawing text")
 			#draw text
@@ -492,8 +497,10 @@ class GeneralsViewer(object):
 		except:
 			raise
 			# print("Unexpected error:", sys.exc_info()[0])
-
-	def draw_square(self, tile, width, R, G, B, alpha):
+			
+	def draw_square(self, tile, width, R, G, B, alpha, shape = None):
+		if shape == None:
+			shape = SQUARE
 		key = BLACK
 		color = (min(255,R),min(255,G),min(255,B))
 		s = pygame.Surface((CELL_WIDTH, CELL_HEIGHT))
@@ -506,10 +513,11 @@ class GeneralsViewer(object):
 		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
 		#logging.info("drawing square for tile {} alpha {} width {} at pos {},{}".format(tile.toString(), alpha, width, pos_left, pos_top))
 		
-		pygame.draw.rect(s, color, SQUARE, width)
+		pygame.draw.rect(s, color, shape, width)
 			
 		s.set_alpha(alpha)
 		self._screen.blit(s, (pos_left, pos_top))
+
 
 	def draw_army(self, army, R, G, B, alphaStart):
 		# after drawing the circle, we can set the 
@@ -535,12 +543,30 @@ class GeneralsViewer(object):
 		pos_top = (CELL_MARGIN + CELL_HEIGHT) * tile.y + CELL_MARGIN
 		self._screen.blit(self._font.render(army.name, True, WHITE), (pos_left + CELL_WIDTH - 10, pos_top))
 
+		
 	def draw_armies(self):
 		for army in list(self._map.ekBot.armyTracker.armies.values()):
 			if army.scrapped:
 				self.draw_army(army, 200, 200, 200, 70)
 			else:
 				self.draw_army(army, 255, 255, 255, 120)
+
+
+	def draw_chokes(self):
+		if self._map.ekBot.board_analysis != None:
+			if self._map.ekBot.board_analysis.intergeneral_analysis != None:
+				for choke in self._map.ekBot.board_analysis.intergeneral_analysis.pathChokes:
+					# Poiple
+					self.draw_square(choke, 2, 93, 0, 111, 230, SQUARE_SMALLER_INNER)
+					
+			#for tile in self._map.reachableTiles:
+			#	if self._map.ekBot.board_analysis.innerChokes[tile.x][tile.y]:
+			#		# Dark green?
+			#		self.draw_square(tile, 1, 30, 97, 10, 255, SQUARE_1)
+
+			#	if self._map.ekBot.board_analysis.outerChokes[tile.x][tile.y]:
+			#		# Dark yella
+			#		self.draw_square(tile, 1, 135, 131, 0, 240, SQUARE_2)
 	
 	def draw_path(self, pathObject, R, G, B, alphaStart, alphaDec, alphaMin):
 		if pathObject == None:

@@ -29,6 +29,8 @@
     <Content Include="TODO.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BoardAnalyzer.py" />
+    <Compile Include="ArmyAnalyzer.py" />
     <Compile Include="base\bot_base.py" />
     <Compile Include="base\client\generals.py" />
     <Compile Include="base\client\map.py" />
