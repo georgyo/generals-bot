@@ -18,9 +18,19 @@ class PathWay:
 	def __init__(self, distance):
 		self.distance = distance
 		self.tiles = set()
+		self.seed_tile = None
 
 	def add_tile(self, tile):
 		self.tiles.add(tile)
+		if self.seed_tile == None:
+			self.seed_tile = tile
+class InfPathWay:
+	def __init__(self, tile):
+		self.distance = INF
+		self.tiles = set()
+		self.tiles.add(tile)
+		self.seed_tile = tile
+
 
 
 class ArmyAnalyzer:
@@ -34,9 +44,9 @@ class ArmyAnalyzer:
 		self.pathways = {}
 
 
-		if armyA is Army:
+		if type(armyA) is Army:
 			self.tileA = armyA.tile
-		if armyB is Army:
+		if type(armyB) is Army:
 			self.tileB = armyB.tile
 		logging.info("ArmyAnalyzer analyzing {} and {}".format(self.tileA.toString(), self.tileB.toString()))
 			
@@ -60,30 +70,31 @@ class ArmyAnalyzer:
 			# build the pathway
 			if tile not in self.pathways:
 				self.build_pathway(tile)
-			tileDist = self.aMap[tile.x][tile.y]
+
 			# map out choke counts. TODO i don't think this pathChoke stuff works :/ make sure to visualize it well and debug.
-			chokeKey = (tileDist, self.bMap[tile.x][tile.y])
+			chokeKey = (self.aMap[tile.x][tile.y], self.bMap[tile.x][tile.y])
 			if not chokeKey in chokeCounterMap:
 				chokeCounterMap[chokeKey] = 0
 			chokeCounterMap[chokeKey] += 1
 			
 
-		for tile in self.map.reachableTiles:			
+		for tile in self.map.reachableTiles:
 			chokeKey = (self.aMap[tile.x][tile.y], self.bMap[tile.x][tile.y])
-			path = self.pathways[tile]
-			if chokeCounterMap[chokeKey] == 1:
-				#logging.info("  (maybe) found choke at {}? Testing for shorter pathway joins".format(tile.toString()))
-				shorter = count(tile.moveable, lambda adjTile: adjTile in self.pathways and self.pathways[adjTile].distance < path.distance)
-				if shorter == 0:
-					logging.info("    OK WE DID FIND A CHOKEPOINT AT {}! adding to self.pathChokes".format(tile.toString()))
-					# Todo this should probably be on pathways lol
-					self.pathChokes.add(tile)
+			if tile in self.pathways:
+				path = self.pathways[tile]
+				if chokeCounterMap[chokeKey] == 1:
+					#logging.info("  (maybe) found choke at {}? Testing for shorter pathway joins".format(tile.toString()))
+					shorter = count(tile.moveable, lambda adjTile: adjTile in self.pathways and self.pathways[adjTile].distance < path.distance)
+					if shorter == 0:
+						#logging.info("    OK WE DID FIND A CHOKEPOINT AT {}! adding to self.pathChokes".format(tile.toString()))
+						# Todo this should probably be on pathways lol
+						self.pathChokes.add(tile)
 
 
 
 	def build_pathway(self, tile):
 		distance = self.aMap[tile.x][tile.y] + self.bMap[tile.x][tile.y]
-		logging.info("  building pathway from tile {} distance {}".format(tile.toString(), distance))
+		#logging.info("  building pathway from tile {} distance {}".format(tile.toString(), distance))
 		path = PathWay(distance = distance)
 
 		queue = deque()
@@ -91,12 +102,15 @@ class ArmyAnalyzer:
 		while not len(queue) == 0:
 			currentTile = queue.pop()
 			currentTileDistance = self.aMap[currentTile.x][currentTile.y] + self.bMap[currentTile.x][currentTile.y]
-			if currentTileDistance == distance and currentTile not in self.pathways:
-				#logging.info("    adding tile {}".format(currentTile.toString()))
-				path.add_tile(currentTile)
-				self.pathways[currentTile] = path
+			if currentTileDistance < 150:
+				#so not inf
+				if currentTileDistance == distance and currentTile not in self.pathways:
+					#logging.info("    adding tile {}".format(currentTile.toString()))
+					path.add_tile(currentTile)
+					self.pathways[currentTile] = path
 
-				for adjacentTile in currentTile.moveable:
-					queue.appendleft(adjacentTile)
+					for adjacentTile in currentTile.moveable:
+						queue.appendleft(adjacentTile)
+
 
 

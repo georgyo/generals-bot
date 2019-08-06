@@ -37,3 +37,75 @@ Goals for tomorrow: Army tracking and interception
 
 
 
+
+
+
+11:07 PM] Ethryn: http://bot.generals.io/replays/He92ZQYMB
+second round: inefficient troop usage (leaving 2s lying around)
+third round: ditto (why gather 10 troops to not use them)
+turn 72 not taking territory
+turn 96? moving backwards
+turn 125-end general discovered, no defense
+[11:09 PM] EklipZ: what in particular would you be doing with the 2's on second round
+[11:09 PM] Ethryn: http://bot.generals.io/replays/BefNW7tMS
+played very well? attacks could be very slightly later
+[11:09 PM] Ethryn: on the second round lemme screenshot
+[11:10 PM] EklipZ: so when i make the attacks later, he actually plays worse
+[11:11 PM] EklipZ: in that he generally just ends up taking less tiles than opp due to delaying, so he needs to be taking tiles earlier still and then attack with the main attack later?
+[11:11 PM] Ethryn:
+
+[11:12 PM] Ethryn: something like that -- use the flanks to get some coverage, gather all troops in the yellow region, and attack
+[11:12 PM] Ethryn: it probably isn't anywhere near optimal but it's my personally preferred playstyle
+[11:13 PM] EklipZ: can you describe your strategy for choosing where the green arrows go?
+[11:14 PM] EklipZ: i can easily gather to all leaves, but that ends up just blobbing (like the bot used to if you remember many many iterations ago)
+[11:14 PM] EklipZ: so there needs to be intelligent selection on specific points to take some flanks to, but I haven't come up with a process for that
+[11:14 PM] Ethryn: green arrows are basically to cover all potential attack routes and anything that's too far from where i want to send my army
+[11:14 PM] EklipZ: i've been considering it for a bit, but don't have a good idea on how I would select that
+[11:14 PM] Ethryn: idk how to translate that into an algorithm though
+[11:15 PM] EklipZ: yeah, thats the hard part really
+[11:15 PM] Ethryn: it's also dependent on map size -- and terrain and stuff
+[11:15 PM] EklipZ: in what way?
+[11:16 PM] Ethryn: if there's only one exit to a cavelike place and not many towers, i will barrel all my troops out of there
+[11:16 PM] Ethryn: if there are towers, i might try to take a bunch of land inside and quickly gather for a tower on round3
+[11:17 PM] Ethryn: if it's a large map, i'll lean more on exploring over defending
+[11:17 PM] Ethryn: if it's a strong opponent with not many attack routes, i'd go for a slightly later attack
+[11:17 PM] Ethryn: if it's a strong opponent with lots of attack routes, i send out lots of small feelers and then launch my troops from my general without much gathering
+[11:17 PM] EklipZ: this is good stuff, but specifically in the context of selecting green arrows to push outward
+[11:18 PM] Ethryn: basically i pick where i think the enemy general is
+[11:18 PM] Ethryn: or where i want to explore
+[11:18 PM] Ethryn: pick a route there
+[11:18 PM] Ethryn: and then everything else is probably green arrows
+[11:18 PM] Ethryn: exceptions being when i want more troops if i think a collision is more likely
+[11:19 PM] Ethryn: the more likely i think i'll run into an army, the more gathering i do and the less green arrows
+[11:19 PM] Ethryn: i'm still not sure about where though.. ah! i just pick the very outskirts of my territory and expand outwards
+[11:20 PM] EklipZ: basically trying to maximize expansion into the chokes on the way to where you think the enemy spawn might be
+[11:20 PM] EklipZ: hm
+[11:20 PM] Ethryn: mm yeah that sounds about right
+[11:21 PM] EklipZ: hm
+[11:21 PM] EklipZ: hmmmmmmmmmm
+[11:21 PM] EklipZ: slime mold
+[11:21 PM] EklipZ: https://www.citylab.com/transportation/2012/07/mapping-tokyos-train-system-slime-mold/2679/
+CityLab
+Mapping Tokyo's Train System in Slime Mold
+In the future, urban planners could lose their jobs to ultra-efficient slime molds.
+
+[11:22 PM] EklipZ: need to pick the chokes, and just ooze troops towards them like slime mold
+[11:22 PM] EklipZ: I think its like a 3 algorithm procedure or something but yeah I think thats doable now that I'm really thinking it through
+[11:23 PM] EklipZ: (where a choke might just be a corner going around some mountains, I consider any tile that must always be on the shortest path a choke, even if you could technically go around it with no obstacles)
+[11:27 PM] EklipZ: I think the process would be:
+1: pick where the enemy general probably is, (already done)
+2: map a route from all leaves of my territory to that location, or maybe just like 3 or 4 paths that hit different chokes. Keep searching until all chokes are found? I don't have algos to identify chokes yet, but I have ideas on how to do them efficiently. Finding the longer 'alternate paths' is probably the harder part of this.
+3: Pick several of the routes by some selection criteria that I haven't thought through yet. Probably the ones that are furthest away from 'the main attack path' .
+4: Gather troops to either the main attack path, or along the routes selected in (3) above, whichever is closer
+[11:28 PM] EklipZ: and you do this same green line thing once the map has been covered and you're actually fighting for territory, right? Pretty similar process I imagine?
+[11:33 PM] EklipZ: so effectively, he needs to use some of his leaves while waiting a little longer to launch his main attack
+[11:33 PM] EklipZ: is more or less the synopsis on why he is getting behind?
+[11:34 PM] EklipZ: roughly the same conclusion i came to, but you had a lot of insights i was missing
+[11:34 PM] Ethryn: yeah 
+> so effectively, he needs to use some of his leaves while waiting a little longer to launch his main attack
+sounds very right
+[11:35 PM] EklipZ: so what about more of the tactical aspects of play? After I get all of ^ touched up, i'm going to be working on tactics / micro
+[11:35 PM] EklipZ: what about how you decide when to launch an attack, when to split and leave half your army behind, etc?
+[11:35 PM] EklipZ: like, when do you decide to wait until you see the opps army before launching? etc
+[11:38 PM] Ethryn: land counts
+[11:38 PM] Ethryn: if i'm ahead in land, i defend, otherwise i attack is the most general rule of thumb

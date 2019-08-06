@@ -10,6 +10,7 @@ import random
 from copy import deepcopy
 import time
 import json
+from ArmyAnalyzer import *
 from collections import deque 
 from queue import PriorityQueue
 from pprint import pprint,pformat
@@ -23,13 +24,14 @@ class ThreatType(Enum):
     Vision = 2
 
 class ThreatObj(object):
-	def __init__(self, moveCount, threatValue, path, type, saveTile = None):
+	def __init__(self, moveCount, threatValue, path, type, saveTile = None, armyAnalysis = None):
 		self.turns = moveCount
 		self.threatValue = threatValue
 		self.path = path
 		self.threatPlayer = path.start.tile.player
 		self.threatType = type
 		self.saveTile = saveTile
+		self.armyAnalysis = armyAnalysis
 
 
 
@@ -60,9 +62,6 @@ class DangerAnalyzer(object):
 
 	def getVisionThreat(self, general, depth, armies):
 		curThreat = None
-		#hack vision threat broken todo fix
-		# DO NOT COMMENT UNTIL TILE RESTRICTIONS IS IMPLEMENTED :V
-		return None
 		for tile in general.adjacents:
 			if tile.player != -1 and tile.player != general.player:
 				logging.info("not searching general vision due to tile {},{} of player {}".format(tile.x, tile.y, tile.player))
@@ -73,11 +72,15 @@ class DangerAnalyzer(object):
 				path = dest_breadth_first_target(self.map, general.adjacents, 0, 0.01, depth, None, player.index, False, 2)
 				if path != None and (curThreat == None or path.length < curThreat.length or (path.length == curThreat.length and path.value > curThreat.value)):
 					#self.viewInfo.addSearched(path[1].tile)
-					logging.info("dest BFS found VISION against our general:\n{}".format(visionPath.toString()))
+					logging.info("dest BFS found VISION against our general:\n{}".format(path.toString()))
 					curThreat = path
 		if (curThreat == None):
 			return None
-		return ThreatObj(curThreat.length, curThreat.value, curThreat, ThreatType.Vision)
+		army = curThreat.start.tile
+		if curThreat.start.tile in armies:
+			army = armies[army]
+		analysis = ArmyAnalyzer(self.map, general, army)
+		return ThreatObj(curThreat.length, curThreat.value, curThreat, ThreatType.Vision, None, analysis)
 	
 
 	def getFastestThreat(self, general, depth, armies):
@@ -114,7 +117,11 @@ class DangerAnalyzer(object):
 		logging.info("fastest threat analyzer took {:.3f}".format(time.time() - startTime))
 		if (curThreat == None):
 			return None
-		return ThreatObj(curThreat.length - 1, curThreat.value, curThreat, ThreatType.Kill, saveTile)
+		army = curThreat.start.tile
+		if curThreat.start.tile in armies:
+			army = armies[army]
+		analysis = ArmyAnalyzer(self.map, general, army)
+		return ThreatObj(curThreat.length - 1, curThreat.value, curThreat, ThreatType.Kill, saveTile, analysis)
 	
 	
 	def getHighestThreat(self, general, depth, armies):

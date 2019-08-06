@@ -59,6 +59,8 @@ class Army(object):
 		# entangle the armies
 		for splitBoi in split:
 			splitBoi.entangledArmies = list(where(split, lambda army: army != splitBoi))
+		logging.info("for army {} set self as scrapped because splitting for fog".format(self.toString()))
+		self.scrapped = True
 		return split
 
 
@@ -147,10 +149,14 @@ class ArmyTracker(object):
 		#for army in list(self.armies.values()):
 		#	self.determine_army_movement(army, adjArmies)
 		self.trackingArmies = {}
+		skip = set()
 
 		for army in list(self.armies.values()):
 			armyTile = army.tile
 			if army.scrapped:
+				continue
+			if army.tile in skip:
+				logging.info("Army {} was in skip set. Skipping".format(army.toString()))
 				continue
 			# army may have been removed (due to entangled resolution)
 			if armyTile not in self.armies:
@@ -182,6 +188,7 @@ class ArmyTracker(object):
 							logging.info("  WAS POOR RESOLUTION! Adding emergence for player {} army.tile {} value {}".format(army.tile.player, army.tile.toString(), armyEmergenceValue))
 							self.new_army_emerged(army.tile, armyEmergenceValue)
 						self.resolve_fog_emergence(sourceFogArmyPath, army.tile)
+
 				else:
 					if source in self.armies:
 						sourceArmy = self.armies[source]
@@ -191,6 +198,8 @@ class ArmyTracker(object):
 							larger = army
 							smaller = sourceArmy
 						logging.info("Army {} was gathered to visibly from source ARMY {} and will be merged as {}".format(army.toString(), sourceArmy.toString(), larger.toString()))
+						skip.add(larger.tile)
+						skip.add(smaller.tile)
 						self.merge_armies(larger, smaller, army.tile)
 						continue
 					else:

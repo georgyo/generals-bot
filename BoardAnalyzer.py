@@ -20,6 +20,7 @@ class BoardAnalyzer:
 		startTime = time.time()
 		self.map = map
 		self.general = general
+		self.should_rescan = False
 
 		self.innerChokes = None
 		self.outerChokes = None
@@ -31,6 +32,7 @@ class BoardAnalyzer:
 		logging.info("BoardAnalyzer completed in {:.3f}".format(time.time() - startTime))
 
 	def rescan_chokes(self):
+		self.should_rescan = False
 		oldInner = self.innerChokes
 		oldOuter = self.outerChokes
 		self.innerChokes = [[False for x in range(self.map.rows)] for y in range(self.map.cols)]
@@ -39,12 +41,13 @@ class BoardAnalyzer:
 		for tile in self.map.reachableTiles:
 			logging.info("Rescanning chokes for {}".format(tile.toString()))
 			tileDist = self.genDistMap[tile.x][tile.y]
-			moveableOuterCount = count(tile.moveable, lambda adj: tileDist == self.genDistMap[adj.x][adj.y] + 1)
-			if moveableOuterCount == 1:
-				self.innerChokes[tile.x][tile.y] = True
 			moveableInnerCount = count(tile.moveable, lambda adj: tileDist == self.genDistMap[adj.x][adj.y] - 1)
 			if moveableInnerCount == 1:
 				self.outerChokes[tile.x][tile.y] = True
+			moveableOuterCount = count(tile.moveable, lambda adj: tileDist == self.genDistMap[adj.x][adj.y] + 1)
+			# checking moveableInner to avoid considering dead ends 'chokes'
+			if moveableOuterCount == 1 and moveableInnerCount >= 1:
+				self.innerChokes[tile.x][tile.y] = True
 			if self.map.turn > 4:
 				if oldInner != None and oldInner[tile.x][tile.y] != self.innerChokes[tile.x][tile.y]:
 					logging.info("  inner choke change: tile {}, old {}, new {}".format(tile.toString(), oldInner[tile.x][tile.y], self.innerChokes[tile.x][tile.y]))
@@ -53,3 +56,31 @@ class BoardAnalyzer:
 
 	def rebuild_intergeneral_analysis(self, opponentGeneral):
 		self.intergeneral_analysis = ArmyAnalyzer(self.map, self.general, opponentGeneral)
+
+	# minAltPathCount will force that many paths to be included even if they are greater than maxAltLength
+	def find_flank_leaves(self, leafMoves, minAltPathCount, maxAltLength):
+		goodLeaves = []
+
+		# order by: totalDistance, then pick tile by closestToOpponent
+
+		heap = PriorityQueue()
+		includedPathways = []
+		for move in leafMoves:
+			if move.dest in self.intergeneral_analysis.pathways:
+				pathwaySource = self.intergeneral_analysis.pathways[move.source]
+				pathwayDest = self.intergeneral_analysis.pathways[move.dest]
+				if pathwaySource.distance <= maxAltLength:
+					if pathwaySource not in includedPathways:
+						if pathwaySource.distance > pathwayDest.distance or pathwaySource.distance == pathwayDest.distance:
+							# moving to a shorter path or moving along same distance path
+							# If getting further from our general (and by extension closer to opp since distance is equal)
+							gettingFurtherFromOurGen = self.intergeneral_analysis.aMap[move.source.x][move.source.y] < self.intergeneral_analysis.aMap[move.dest.x][move.dest.y]
+							reasonablyCloseToTheirGeneral = self.intergeneral_analysis.bMap[move.dest.x][move.dest.y] < 3 + self.intergeneral_analysis.aMap[self.intergeneral_analysis.tileB.x][self.intergeneral_analysis.tileB.y]
+					
+							if (gettingFurtherFromOurGen and reasonablyCloseToTheirGeneral):
+								includedPathways.append(pathwaySource)
+								goodLeaves.append(move)
+					else:
+						logging.info("Pathway for tile {} was already included, skipping".format(move.source.toString()))
+
+		return goodLeaves
