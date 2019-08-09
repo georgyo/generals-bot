@@ -401,6 +401,8 @@ class ArmyTracker(object):
 		self.armies[fogTargetTile] = army
 		
 	def get_expected_delta(self, tile):
+		if self.map.players[tile.player].dead:
+			return 0
 		expected = 0
 		if (tile.isCity or tile.isGeneral) and self.isCityBonus:
 			expected += 1

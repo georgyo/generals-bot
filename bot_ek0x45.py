@@ -1039,7 +1039,7 @@ class EklipZBot(object):
 
 		if threat != None and threat.threatType == ThreatType.Vision and threat.path.start.tile.visible:
 			# Just kill threat then, nothing crazy
-			if self.targetingArmy and not self.targetingArmy.scrapped:
+			if self.targetingArmy and not self.targetingArmy.scrapped and self.targetingArmy.tile in self.armyTracker.armies:
 				path = self.kill_enemy_path(threat.path, allowGeneral = True)
 				if path:
 					self.info("Killing vision threat {} with path {}".format(threat.path.start.tile.toString(), path.toString()))
@@ -1622,18 +1622,28 @@ class EklipZBot(object):
 		threatPathSet = shorterThreatPath.tileSet.copy()
 		threatPathSet.remove(threatPath.start.tile)
 		negativeTiles = threatPathSet.copy()
+		threatTile = threatPath.start.tile
+		threatPlayer = threatPath.start.tile.player
+		if threatTile in self.armyTracker.armies:
+			threatPlayer = self.armyTracker.armies[threatTile].player
+		threatPath.calculate_value(threatPlayer)
+		threatValue = threatPath.value
+		if threatTile.player != threatPlayer:
+			threatValue += self.armyTracker.armies[threatTile].value
+
 		# Doesn't make any sense to have the general defend against his own threat, does it? Maybe it does actually hm
 		if not allowGeneral:
 			negativeTiles.add(self.general)
 		# First try one move kills on the threat tile. 0 = 1 move????
-		gatherToThreatPath = dest_breadth_first_target(self._map, [threatPath.start.tile], 0, 0.1, maxDepth = 0, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
-		
+		gatherToThreatPath = dest_breadth_first_target(self._map, [threatPath.start.tile], targetArmy = threatValue, maxDepth = 0, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
+		if gatherToThreatPath != None:
+			logging.info("Wait, length 0 kill actually found??? kill {} with {}".format(threatPath.start.tile.toString(), gatherToThreatPath.toString()))
 		# Then iteratively search for a kill to the closest tile on the path to the threat, checking one tile further along the threat each time.
 		curNode = threatPath.start.next
 		# 0 = 1 move? lol
 		i = 0
 		while gatherToThreatPath == None and curNode != None:
-			gatherToThreatPath = dest_breadth_first_target(self._map, [curNode.tile], threatPath.start.tile.army, 0.1, i, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
+			gatherToThreatPath = dest_breadth_first_target(self._map, [curNode.tile], threatValue, 0.1, i, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
 			i += 1
 			curNode = curNode.next
 
