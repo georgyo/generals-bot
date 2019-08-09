@@ -1643,7 +1643,7 @@ class EklipZBot(object):
 		# 0 = 1 move? lol
 		i = 0
 		while gatherToThreatPath == None and curNode != None:
-			gatherToThreatPath = dest_breadth_first_target(self._map, [curNode.tile], threatValue, 0.1, i, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
+			gatherToThreatPath = dest_breadth_first_target(self._map, [curNode.tile], targetArmy = threatValue, maxDepth = i, searchingPlayer = self.general.player, negativeTiles = negativeTiles, noLog = True)
 			i += 1
 			curNode = curNode.next
 
