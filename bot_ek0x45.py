@@ -4404,7 +4404,7 @@ class EklipZBot(object):
 				minAlpha = 150
 				alphaDec = 0
 				self.viewInfo.paths.appendleft(PathColorer(curPath, 200, 51, 204, alpha, alphaDec, minAlpha))
-			logging.info("EXPANSION PLANNED HOLY SHIT? Duration {:.3f}, path {}".format(time.time() - startTime, path.toString()))
+			logging.info("EXPANSION PLANNED HOLY SHIT? Duration {:.3f}, path {}, iterations {}".format(time.time() - startTime, path.toString(), iter[0]))
 			#draw maximal path darker
 			alpha = 255
 			minAlpha = 200
@@ -4412,7 +4412,7 @@ class EklipZBot(object):
 			self.viewInfo.paths = deque(where(self.viewInfo.paths, lambda pathCol: pathCol.path != path))
 			self.viewInfo.paths.appendleft(PathColorer(path, 255, 100, 200, alpha, alphaDec, minAlpha))
 		else:
-			logging.info("No expansion plan.... :( Duration {:.3f},".format(time.time() - startTime))
+			logging.info("No expansion plan.... :( Duration {:.3f}, iterations {}".format(time.time() - startTime, iter[0]))
 
 		return path
 		
