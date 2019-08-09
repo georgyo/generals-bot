@@ -374,7 +374,7 @@ class EklipZBot(object):
 		lastMove = None
 		if self._map.turn - 1 in self.history.moveHistory:
 			lastMove = self.history.moveHistory[self._map.turn - 1][0]
-		self.armyTracker.scan(self._gen_distances, lastMove)
+		self.armyTracker.scan(self._gen_distances, lastMove, self._map.turn)
 		if self._map.turn == 3 or self.board_analysis.should_rescan:
 			# I think reachable tiles isn't built till turn 2? so chokes aren't built properly turn 1
 			self.board_analysis.rescan_chokes()
@@ -1067,7 +1067,7 @@ class EklipZBot(object):
 				logging.info("savePath tile was also kingKillPath tile, skipped kingKillPath {}".format(kingKillPath.toString()))
 
 
-		if self.targetingArmy and not self.targetingArmy.scrapped:
+		if self.targetingArmy and not self.targetingArmy.scrapped and self.targetingArmy.tile.army > 2:
 			path = self.kill_army(self.targetingArmy, allowGeneral = True)
 			if path:
 				self.info("Continuing to kill army {} with path {}".format(self.targetingArmy.toString(), path.toString()))
@@ -1630,6 +1630,8 @@ class EklipZBot(object):
 		threatValue = threatPath.value
 		if threatTile.player != threatPlayer:
 			threatValue += self.armyTracker.armies[threatTile].value
+		threatValue += 5
+		logging.info("threatValue was {}".format(threatValue))
 
 		# Doesn't make any sense to have the general defend against his own threat, does it? Maybe it does actually hm
 		if not allowGeneral:
@@ -4020,6 +4022,7 @@ class EklipZBot(object):
 	'''
 	def get_optimal_expansion(self, turns, negativeTiles = None, valueFunc = None, priorityFunc = None, initFunc = None, skipFunc = None, allowLeafMoves = True, calculateTrimmable = True):
 		# allow exploration again
+		fullLog = self._map.turn < 150
 		self.finishingExploration = True
 		logging.info("\n\nAttempting Optimal Expansion (tm) for turns {}:\n".format(turns))
 		startTime = time.time()
@@ -4029,8 +4032,8 @@ class EklipZBot(object):
 			negativeTiles = set()
 		else:
 			negativeTiles = negativeTiles.copy()
-		for tile in negativeTiles:
-			logging.info("negativeTile: {}".format(tile.toString()))
+			for tile in negativeTiles:
+				logging.info("negativeTile: {}".format(tile.toString()))
 
 		iter = [0]
 
@@ -4160,8 +4163,8 @@ class EklipZBot(object):
 						enemyExpansionValue += (adj.army - 1) // 2
 						tileCapturePoints += 0.5
 				newPathPriority = pathPriority - addedPriority
-				if iter[0] < 100:
-					logging.info("nextTile {}, wastedMoves {}, newPathPriority / distSoFar {:.2f}, tileCapturePoints {:.2f}, \n           0-armyRemaining {}, enemyTiles {}, neutralTiles {}, \n           newPathPriority {:.2f}, distSoFar {}, nextTileSet {}, \n           nextAdjacentSet {}, enemyExpansionValue {}, nextEnemyExpansionSet {}".format(nextTile.toString(), wastedMoves, newPathPriority / distSoFar, tileCapturePoints, 0-armyRemaining, enemyTiles, neutralTiles, newPathPriority, distSoFar, len(nextTileSet), len(nextAdjacentSet), enemyExpansionValue, len(nextEnemyExpansionSet)))
+				if iter[0] < 100 and fullLog:
+					logging.info("   - nextTile {}, waste [{:.3f}], newPathPrio / dsf [{:.3f}], tileCapPts [{:.3f}], negArmRem [{}]\n      eTiles {}, nTiles {}, newPathPrio {:.2f}, dsf {}, nextTileSet {}, \n         nextAdjacentSet {}, enemyExpansionValue {}, nextEnemyExpansionSet {}".format(nextTile.toString(), wastedMoves, newPathPriority / distSoFar, tileCapturePoints, 0-armyRemaining, enemyTiles, neutralTiles, newPathPriority, distSoFar, len(nextTileSet), len(nextAdjacentSet), enemyExpansionValue, len(nextEnemyExpansionSet)))
 				return (wastedMoves, newPathPriority / distSoFar, tileCapturePoints, 0-armyRemaining, enemyTiles, neutralTiles, newPathPriority, distSoFar, nextTileSet, nextAdjacentSet, enemyExpansionValue, nextEnemyExpansionSet)
 			priorityFunc = default_priority_func
 		
@@ -4295,8 +4298,8 @@ class EklipZBot(object):
 		#expansionGather = greedy_backpack_gather(self._map, tilesLargerThanAverage, turns, None, valueFunc, baseCaseFunc, negativeTiles, None, self.general.player, priorityFunc, skipFunc = None)
 		if allowLeafMoves:
 			for leafMove in self.leafMoves:
-				if (not leafMove.source in negativeTiles 
-						and not leafMove.dest in negativeTiles 
+				if (leafMove.source not in negativeTiles 
+						and leafMove.dest not in negativeTiles 
 						and (leafMove.dest.player == -1 or leafMove.dest.player == self.targetPlayer)):
 					if leafMove.source.army < 30:
 						if leafMove.source.army - 1 <= leafMove.dest.army:
@@ -4305,9 +4308,17 @@ class EklipZBot(object):
 						path = Path(leafMove.source.army - leafMove.dest.army - 1)
 						path.add_next(leafMove.source)
 						path.add_next(leafMove.dest)
-						value = 1
+						value = 1.05
 						if leafMove.dest.player == self.targetPlayer:
-							value = 2
+							value = 2.2
+						sourceDist = distMap[leafMove.source.x][leafMove.source.y]
+						destDist = distMap[leafMove.dest.x][leafMove.dest.y]
+						if destDist < sourceDist:
+							logging.info("leafMove {} -> {} was TOWARDS opponent".format(leafMove.source.toString(), leafMove.dest.toString()))
+							value += 0.2
+						elif destDist == sourceDist:
+							logging.info("leafMove {} -> {} was adjacent to opponent".format(leafMove.source.toString(), leafMove.dest.toString()))
+							value += 0.05
 						paths.append((0, value, path))
 						negativeTiles.add(leafMove.source)
 						negativeTiles.add(leafMove.dest)

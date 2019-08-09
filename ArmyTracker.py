@@ -101,12 +101,16 @@ class ArmyTracker(object):
 		self.emergenceLocationMap = [[[0 for x in range(self.map.rows)] for y in range(self.map.cols)] for z in range(len(self.map.players))]
 		self.notify_unresolved_army_emerged = []
 		self.player_aggression_ratings = [PlayerAggressionTracker(z) for z in range(len(self.map.players))]
+		self.lastTurn = 0
 
 	# distMap used to determine how to move armies under fog
-	def scan(self, distMap, lastMove):
+	def scan(self, distMap, lastMove, turn):
 		self.lastMove = lastMove
-		self.fogPaths = []
 		logging.info("ARMY TRACKER SCANNING BEEEEEEEEEEEEEEEEEEEEEEEEEEP BOOOOOOOOOOOOP")
+		if turn > self.lastTurn:
+			self.lastTurn = turn
+			self.move_fogged_army_paths()
+		self.fogPaths = []
 		self.clean_up_armies()
 		self.distMap = distMap
 		self.isArmyBonus = self.map.turn % 50 == 0
@@ -115,6 +119,17 @@ class ArmyTracker(object):
 		self.track_army_movement()
 		self.find_new_armies()
 		logging.info("ARMY TRACKER TOOK {:.3f}\n".format(time.time() - start))
+
+	def move_fogged_army_paths(self):
+		for army in list(self.armies.values()):
+			if not army.tile.visible and army.expectedPath != None:
+				nextTile = army.expectedPath.start.next.tile
+				if not nextTile.visible:
+					logging.info("Moving fogged army {} along expected path {}".format(army.toString(), army.expectedPath.toString()))
+					del self.armies[army.tile]
+					army.update_tile(nextTile)
+					self.armies[nextTile] = army
+					army.expectedPath.made_move()
 
 	def clean_up_armies(self):
 		for army in list(self.armies.values()):

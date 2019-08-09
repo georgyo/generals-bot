@@ -895,7 +895,7 @@ def breadth_first_dynamic_max(map, startTiles, valueFunc, maxTime = 0.2, maxDept
 					parentString = parent.toString()
 				else:
 					parentString = "None"
-				logging.info("Tile {} from {} is new max value: [{}]  (dist {})".format(current.toString(), parentString, '], ['.join(str(x) for x in newValue), dist))
+				logging.info("+Tile {} from {} is new max value: [{}]  (dist {})".format(current.toString(), parentString, '], ['.join("{:.3f}".format(x) for x in newValue), dist))
 			maxValue = newValue
 			endNode = current
 		#elif logResultValues:			
