@@ -53,7 +53,7 @@ def count(list, filter):
 	return count
 
 
-def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, negativeTiles = None, searchingPlayer = -2, dontEvacCities = False, dupeThreshold = 6, noNeutralCities = True, skipTiles = None, ignoreGoalArmy = False, noLog = False):
+def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, negativeTiles = None, searchingPlayer = -2, dontEvacCities = False, dupeThreshold = 4, noNeutralCities = True, skipTiles = None, ignoreGoalArmy = False, noLog = False):
 	'''
 	GoalList can be a dict that maps from start tile to (startDist, goalTargetArmy)
 	'''

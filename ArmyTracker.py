@@ -181,7 +181,8 @@ class ArmyTracker(object):
 			if army.tile != armyTile:
 				raise Exception("bitch, army key {} didn't match army tile {}".format(armyTile.toString(), army.toString()))
 			expectedDelta = self.get_expected_delta(army.tile)
-			logging.info("{} army.value {} expectedDelta {} actual delta {}".format(army.toString(), army.value, expectedDelta, army.tile.delta.armyDelta))
+			armyRealTileDelta = 0 - army.tile.delta.armyDelta - expectedDelta
+			logging.info("{} army.value {} expectedDelta {} actual delta {}, armyRealTileDelta {}".format(army.toString(), army.value, expectedDelta, army.tile.delta.armyDelta, armyRealTileDelta))
 			foundLocation = False
 			#if army.tile.delta.armyDelta == expectedDelta:
 			#	# army did not move and we attacked it?
@@ -228,7 +229,6 @@ class ArmyTracker(object):
 			lostVision = False
 			if lostVision or (army.value + 1 + expectedDelta != army.tile.army or army.tile.player != army.player):
 				# army probably moved. Check adjacents for the army
-				armyTileDelta = 0 - army.tile.delta.armyDelta - expectedDelta
 
 				for adjacent in army.tile.moveable:
 					if adjacent.mountain:
@@ -237,21 +237,24 @@ class ArmyTracker(object):
 					for expectedAdjDelta in expectedAdjDeltaArr:
 						logging.info("  adjacent {} delta raw {} expectedAdjDelta {}".format(adjacent.toString(), adjacent.delta.armyDelta, expectedAdjDelta))
 						adjDelta = abs(adjacent.delta.armyDelta + expectedAdjDelta)
-						logging.info("  armyDeltas: army {} {} - adj {} {}  -  lostVision {}".format(army.toString(), armyTileDelta, adjacent.toString(), adjDelta, lostVision))
+						logging.info("  armyDeltas: army {} {} - adj {} {}  -  lostVision {}".format(army.toString(), armyRealTileDelta, adjacent.toString(), adjDelta, lostVision))
 						# if this was our move
 						if (self.lastMove != None and self.lastMove.source == army.tile and self.lastMove.dest == adjacent):
 							foundLocation = True
 							logging.info("    Army (lastMove) probably moved from {} to {}".format(army.toString(), adjacent.toString()))
 							self.army_moved(army, adjacent)
 							break
+						## if this tile was taken by army player and army tile delta was negative
+						#if 
+
 					if foundLocation: break
 
-					if armyTileDelta > 0 and adjDelta - armyTileDelta == 0:
+					if armyRealTileDelta > 0 and adjDelta - armyRealTileDelta == 0:
 						foundLocation = True
 						logging.info("    Army probably moved from {} to {}".format(army.toString(), adjacent.toString()))
 						self.army_moved(army, adjacent)
 						break
-					elif adjacent.delta.gainedSight and armyTileDelta > 0 and adjDelta * 0.9 < armyTileDelta < adjDelta * 1.25:
+					elif adjacent.delta.gainedSight and armyRealTileDelta > 0 and adjDelta * 0.9 < armyRealTileDelta < adjDelta * 1.25:
 						foundLocation = True
 						logging.info("    Army (WishyWashyFog) probably moved from {} to {}".format(army.toString(), adjacent.toString()))
 						self.army_moved(army, adjacent)
@@ -267,7 +270,7 @@ class ArmyTracker(object):
 							oldTile.army = army.value - adjDelta
 						self.army_moved(army, adjacent)
 						break
-					elif self.isArmyBonus and armyTileDelta > 0 and abs(adjDelta - armyTileDelta) == 2:
+					elif self.isArmyBonus and armyRealTileDelta > 0 and abs(adjDelta - armyRealTileDelta) == 2:
 						# handle bonus turn capture moves?
 						foundLocation = True
 						logging.info("    Army (BONUS CAPTURE?) probably moved from {} to {}".format(army.toString(), adjacent.toString()))
@@ -297,13 +300,13 @@ class ArmyTracker(object):
 						for expectedAdjDelta in expectedAdjDeltaArr:
 							logging.info("  adjacent delta raw {} expectedAdjDelta {}".format(adjacent.delta.armyDelta, expectedAdjDelta))
 							adjDelta = abs(adjacent.delta.armyDelta + expectedAdjDelta)
-							logging.info("  armyDeltas: army {} {} - adj {} {} expAdj {}".format(army.toString(), armyTileDelta, adjacent.toString(), adjDelta, expectedAdjDelta))
+							logging.info("  armyDeltas: army {} {} - adj {} {} expAdj {}".format(army.toString(), armyRealTileDelta, adjacent.toString(), adjDelta, expectedAdjDelta))
 							# expectedDelta is fine because if we took the expected tile we would get the same delta as army remaining on army tile.
-							if ((armyTileDelta > 0 or 
+							if ((armyRealTileDelta > 0 or 
 									(not army.tile.visible and 
 												adjacent.visible and 
 												adjacent.delta.armyDelta != expectedAdjDelta)) and
-									adjDelta - armyTileDelta == expectedDelta):
+									adjDelta - armyRealTileDelta == expectedDelta):
 								foundLocation = True
 								logging.info("    Army (Based on expected delta?) probably moved from {} to {}".format(army.toString(), adjacent.toString()))
 								self.army_moved(army, adjacent)
@@ -422,7 +425,7 @@ class ArmyTracker(object):
 		if (tile.isCity or tile.isGeneral) and self.isCityBonus:
 			expected += 1
 		if self.lastMove != None and tile == self.lastMove.dest:
-			if self.lastMove.non_friendly:
+			if self.lastMove.non_friendly and self.lastMove.dest.delta.oldOwner != self.lastMove.dest.delta.newOwner:
 				expected -= self.lastMove.army_moved
 			else:
 				expected += self.lastMove.army_moved
