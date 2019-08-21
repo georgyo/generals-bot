@@ -55,6 +55,8 @@ SQUARE_2 = Rect(2, 2, CELL_WIDTH - 4, CELL_HEIGHT - 4)
 SQUARE_SMALLER_INNER = Rect(0, 0, CELL_WIDTH - 1, CELL_HEIGHT - 1)
 
 
+
+
 class DirectionalShape(object):
 	def __init__(self, downShape):
 		self.downShape = downShape		
@@ -86,15 +88,15 @@ class GeneralsViewer(object):
 		else:
 			self._collect_path = None
 
-	def get_line_arrow(self, r, g, b):
+	def get_line_arrow(self, r, g, b, width = 3):
 		s = pygame.Surface((CELL_WIDTH + 2*CELL_MARGIN, CELL_HEIGHT + 2*CELL_MARGIN))
 		# first, "erase" the surface by filling it with a color and
 		# setting this color as colorkey, so the surface is empty
 		s.fill(WHITE)
 		s.set_colorkey(WHITE)
-		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, 0), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), 3)
-		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), (CELL_WIDTH * 2.5 / 8 + CELL_MARGIN, CELL_HEIGHT * 5 / 8), 3)
-		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), (CELL_WIDTH * 5.5 / 8 + CELL_MARGIN, CELL_HEIGHT * 5 / 8), 3)
+		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, 0), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), width)
+		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), (CELL_WIDTH * 2.5 / 8 + CELL_MARGIN, CELL_HEIGHT * 5 / 8), width)
+		pygame.draw.line(s, (r, g, b), ((CELL_WIDTH) // 2 + CELL_MARGIN, CELL_HEIGHT), (CELL_WIDTH * 5.5 / 8 + CELL_MARGIN, CELL_HEIGHT * 5 / 8), width)
 		return s
 
 	def get_line(self, r, g, b, width = 1):
@@ -314,11 +316,18 @@ class GeneralsViewer(object):
 			
 			self.draw_armies()
 			
-			self.drawGathers()
+			if (self._map.ekBot.redTreeNodes != None):
+				redArrow = DirectionalShape(self.get_line_arrow(255,0,0, width = 2))
+				self.drawGathers(self._map.ekBot.redTreeNodes, redArrow)
+			if (self._map.ekBot.gatherNodes != None):
+				self.drawGathers(self._map.ekBot.gatherNodes, self.lineArrow)
 			#self.draw_chokes()
 			if self._map.ekBot.board_analysis and self._map.ekBot.board_analysis.intergeneral_analysis:
 				chokeColor = (93, 0, 111) # purple
 				self.draw_army_analysis(self._map.ekBot.board_analysis.intergeneral_analysis, chokeColor, draw_pathways = True)
+
+			if self._map.ekBot.targetingArmy != None:
+				self.draw_square(self._map.ekBot.targetingArmy.tile, 3, 1,1,1, 254, SQUARE_2)
 
 			# LINE TESTING CODE		
 			#gen = self._map.ekBot.general
@@ -495,47 +504,47 @@ class GeneralsViewer(object):
 					textVal = "{},{}".format(tile.x, tile.y)
 					self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left, pos_top - 2))
 					
-					#if (self._map.ekBot.leafValueGrid != None):
-					#	leafVal = self._map.ekBot.leafValueGrid[column][row]
-					#	if (leafVal != None):
-					#		textVal = "{0:.0f}".format(leafVal)
-					#		if (leafVal == -1000000): #then was skipped
-					#			textVal = "x"		
-					#		self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + CELL_WIDTH / 3, pos_top + 2 * CELL_HEIGHT / 3))
+					if (self._map.ekBot.leafValueGrid != None):
+						leafVal = self._map.ekBot.leafValueGrid[column][row]
+						if (leafVal != None):
+							textVal = "{0:.0f}".format(leafVal)
+							if (leafVal == -1000000): #then was skipped
+								textVal = "x"		
+							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + CELL_WIDTH / 3, pos_top + 2 * CELL_HEIGHT / 3))
 							
-					#if (self._map.ekBot.viewInfo.bottomRightGridText != None):
-					#	text = self._map.ekBot.viewInfo.bottomRightGridText[column][row]
-					#	if (text != None):
-					#		textVal = "{0:.0f}".format(text)
-					#		if (text == -1000000): #then was skipped
-					#			textVal = "x"		
-					#		self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
-					#	elif self._map.ekBot.targetPlayer != -1:
-					#		val = self._map.ekBot.armyTracker.emergenceLocationMap[self._map.ekBot.targetPlayer][column][row]
-					#		if val != 0:
-					#			textVal = "{:.0f}".format(val)
-					#			self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
+					if (self._map.ekBot.viewInfo.bottomRightGridText != None):
+						text = self._map.ekBot.viewInfo.bottomRightGridText[column][row]
+						if (text != None):
+							textVal = "{0:.0f}".format(text)
+							if (text == -1000000): #then was skipped
+								textVal = "x"		
+							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 3 * CELL_WIDTH / 4, pos_top + 1.5 * CELL_HEIGHT / 3))
+						elif self._map.ekBot.targetPlayer != -1:
+							val = self._map.ekBot.armyTracker.emergenceLocationMap[self._map.ekBot.targetPlayer][column][row]
+							if val != 0:
+								textVal = "{:.0f}".format(val)
+								self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
 
-					#if (self._map.ekBot.viewInfo.bottomLeftGridText != None):
-					#	text = self._map.ekBot.viewInfo.bottomLeftGridText[column][row]
-					#	if (text != None):
-					#		textVal = "{0:.0f}".format(text)
-					#		if (text == -1000000): #then was skipped
-					#			textVal = "x"
-					#		self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 0.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
+					if (self._map.ekBot.viewInfo.bottomLeftGridText != None):
+						text = self._map.ekBot.viewInfo.bottomLeftGridText[column][row]
+						if (text != None):
+							textVal = "{0:.0f}".format(text)
+							if (text == -1000000): #then was skipped
+								textVal = "x"
+							self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 0.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
 							
 					
-					if self._map.ekBot.board_analysis != None:
-						if self._map.ekBot.board_analysis.intergeneral_analysis != None:
-							val = self._map.ekBot.board_analysis.intergeneral_analysis.aMap[column][row]
-							if val < 1000:
-								textVal = "{}".format(val)
-								self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
+					#if self._map.ekBot.board_analysis != None:
+					#	if self._map.ekBot.board_analysis.intergeneral_analysis != None:
+					#		val = self._map.ekBot.board_analysis.intergeneral_analysis.aMap[column][row]
+					#		if val < 1000:
+					#			textVal = "{}".format(val)
+					#			self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 2.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
 							
-							val = self._map.ekBot.board_analysis.intergeneral_analysis.bMap[column][row]
-							if val < 1000:
-								textVal = "{}".format(val)
-								self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 0.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
+					#		val = self._map.ekBot.board_analysis.intergeneral_analysis.bMap[column][row]
+					#		if val < 1000:
+					#			textVal = "{}".format(val)
+					#			self._screen.blit(self._fontSmall.render(textVal, True, color_font), (pos_left + 0.5 * CELL_WIDTH / 4, pos_top + 2 * CELL_HEIGHT / 3))
 							
 			#print("replay {} turn {}".format(self.repId, self._map.turn))
 			# Limit to 60 frames per second
@@ -681,24 +690,20 @@ class GeneralsViewer(object):
 				alpha = alphaMin
 
 
-	def drawGathers(self):
-		pruneArrow = self.get_line_arrow(190, 30, 0)
-		if (self._map.ekBot.gatherNodes != None):
+	def drawGathers(self, nodes, shape):
+		#pruneArrow = self.get_line_arrow(190, 30, 0)
 			q = deque()
-			for node in self._map.ekBot.gatherNodes:
+			for node in nodes:
 				q.appendleft((node, True))
 			while (len(q) > 0):
 				node, unpruned = q.pop()
 				for child in node.children:
 					q.appendleft((child, unpruned))
 				for prunedChild in node.pruned:
-					q.appendleft((child, False))
+					q.appendleft((prunedChild, False))
 
-				arrowToUse = self.lineArrow
-				if not unpruned:
-					arrowToUse = pruneArrow
 				if node.fromTile != None:
-					self.draw_between_tiles(arrowToUse, node.fromTile, node.tile)
+					self.draw_between_tiles(shape, node.fromTile, node.tile)
 
 
 	def draw_between_tiles(self, shape, sourceTile, destTile):

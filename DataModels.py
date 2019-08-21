@@ -69,6 +69,8 @@ class TreeNode(object):
 		self.tile = tile
 		self.fromTile = fromTile
 		self.value = 0
+		self.trunkValue = 0
+		self.trunkDistance = 0
 		self.turn = turn
 		self.gatherTurns = 0
 		self.neutrals = 0
@@ -88,6 +90,15 @@ class TreeNode(object):
 			return False
 		return self.tile == other.tile
 
+	def deep_clone(self):
+		newNode = TreeNode(self.tile, self.fromTile, self.turn)
+		newNode.value = self.value
+		newNode.trunkValue = self.trunkValue
+		newNode.gatherTurns = self.gatherTurns
+		newNode.neutrals = self.neutrals
+		newNode.children = [node.deep_clone() for node in self.children]
+		newNode.pruned = [node.deep_clone() for node in self.pruned]
+		return newNode
 
 class Move(object):
 	def __init__(self, source, dest, move_half = False):

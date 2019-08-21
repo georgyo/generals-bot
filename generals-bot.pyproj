@@ -40,10 +40,10 @@
     <Compile Include="bot_ek0x45.py" />
     <Compile Include="ArmyTracker.py" />
     <Compile Include="DataModels.py" />
-    <Compile Include="Directives\BasicPath.py">
+    <Compile Include="BasicPath.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Directives\Directives.py" />
+    <Compile Include="Directives.py" />
     <Compile Include="History.py" />
     <Compile Include="Path.py" />
     <Compile Include="Territory.py" />
@@ -56,7 +56,6 @@
   <ItemGroup>
     <Folder Include="base" />
     <Folder Include="base\client" />
-    <Folder Include="Directives\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="{a9696fd6-96ad-422b-9dcc-c0571433ed61}\3.5" />

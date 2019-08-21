@@ -34,7 +34,7 @@ class InfPathWay:
 
 
 class ArmyAnalyzer:
-	def __init__(self, map, armyA, armyB):
+	def __init__(self, map, armyA, armyB, maxDist = 1000):
 		startTime = time.time()
 		self.map = map
 		self.tileA = armyA

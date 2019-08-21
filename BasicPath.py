@@ -1,6 +1,4 @@
-
-
-from Directives.Directives import *
+from Directives import *
 
 class BasicPath(Directive):
 	def __init__(self, path, priority = 100):
