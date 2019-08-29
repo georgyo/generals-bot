@@ -516,6 +516,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 					   searchingPlayer = -2,
 					   priorityFunc = None,
 					   skipFunc = None,
+					   priorityTiles = None,
 					   ignoreStartTile = False,
 					   incrementBackward = False,
 					   preferNeutral = False,
@@ -549,15 +550,19 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	#           than gathering stuff that may open up a better attack path in front of our gen)
 
 	# TODO factor in cities, right now they're not even incrementing. need to factor them into the timing and calculate when they'll be moved.
-	if searchingPlayer == -2:
-		searchingPlayer = startTiles.keys()[0].player
+	if searchingPlayer == -2:		
+		if isinstance(startTiles, dict):
+			searchingPlayer = startTiles.keys()[0].player
+		else:
+			searchingPlayer = startTiles[0].player
+	
 
 
 	logging.info("Trying greedy-bfs-gather. Turns {}. Searching player {}".format(turns, searchingPlayer))
 	if valueFunc == None:
 		logging.info("Using default valueFunc")
 		def default_value_func_max_gathered_per_turn(currentTile, priorityObject):
-			(realDist, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum) = priorityObject
+			(realDist, negPrioTilesPerTurn, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum, numPrioTiles) = priorityObject
 			value = -1000
 			if negArmySum < 0:
 				value = 0 - (negGatheredSum / (max(1, realDist)))
@@ -568,7 +573,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 	if priorityFunc == None:
 		logging.info("Using default priorityFunc")
 		def default_priority_func(nextTile, currentPriorityObject):
-			(realDist, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum) = currentPriorityObject
+			(realDist, negPrioTilesPerTurn, negGatheredSum, negArmySum, negDistanceSum, dist, xSum, ySum, numPrioTiles) = currentPriorityObject
 			negArmySum += 1
 			negGatheredSum += 1
 			if (nextTile not in negativeTiles):
@@ -587,9 +592,11 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 			# hacks us prioritizing further away tiles
 			if distPriorityMap != None:
 				negDistanceSum -= distPriorityMap[nextTile.x][nextTile.y]
-				
+			if priorityTiles != None and nextTile in priorityTiles:
+				numPrioTiles += 1
+			realDist += 1
 			#logging.info("prio: nextTile {} got realDist {}, negNextArmy {}, negDistanceSum {}, newDist {}, xSum {}, ySum {}".format(nextTile.toString(), realDist + 1, 0-nextArmy, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y))
-			return (realDist + 1, negGatheredSum, negArmySum, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y)
+			return (realDist, numPrioTiles/realDist, negGatheredSum, negArmySum, negDistanceSum, dist + 1, xSum + nextTile.x, ySum + nextTile.y, numPrioTiles)
 		priorityFunc = default_priority_func
 		
 
@@ -603,7 +610,7 @@ def greedy_backpack_gather(map, startTiles, turns, targetArmy = None, valueFunc 
 				startArmy = tile.army
 			
 			logging.info("tile {} got base case startArmy {}, startingDist {}".format(tile.toString(), startArmy, startingDist))
-			return (0, 0, startArmy, 0, startingDist, tile.x, tile.y)
+			return (0, 0, 0, startArmy, 0, startingDist, tile.x, tile.y, 0)
 		baseCaseFunc = default_base_case_func
 		
 
@@ -1419,6 +1426,7 @@ def solve_knapsack(items, capacity, weights, values):
 		# + K[i-1] [w-wt[i-1]]) as in Knapsack 
 		# table. If it comes from the latter 
 		# one/ it means the item is included. 
+		# THIS IS WHY VALUE MUST BE INTS
 		if res == K[i - 1][w]: 
 			continue
 		else: 
