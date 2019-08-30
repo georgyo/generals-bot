@@ -17,7 +17,7 @@ class TerritoryClassifier():
 		self.territories = [None for player in map.players]
 		self.map = map
 		self.lastCalculatedTurn = -1
-		self.territoryMap = new_map_matrix(self.map, lambda x,y: -1)
+		self.territoryMap = new_value_matrix(self.map, -1)
 		self.needToUpdateAroundTiles = set()
 		for tile in self.map.reachableTiles:
 			self.needToUpdateAroundTiles.add(tile)
@@ -42,7 +42,7 @@ class TerritoryClassifier():
 		logging.info("Scanning map for territories, aww geez")
 		counts = new_map_matrix(self.map, lambda x,y: [0 for n in range(len(self.map.players)+1)])
 		startTime = time.time()
-		undiscoveredCounterDepth = 4
+		undiscoveredCounterDepth = 5
 		# count the number of tiles for each player within range 3 to determine whose territory this is
 		neutralNewIndex = len(self.map.players)
 		
@@ -98,7 +98,9 @@ class TerritoryClassifier():
 			
 
 			self.territoryMap[evaluatingTile.x][evaluatingTile.y] = maxPlayer
-		breadth_first_foreach(self.map, list(self.needToUpdateAroundTiles), undiscoveredCounterDepth, foreach_near_updated_tiles, None, lambda tile: tile.mountain, None, self.map.player_index)
+		startTiles = list(self.needToUpdateAroundTiles)
+		logging.info("  Scanning territory around {}".format(" - ".join([tile.toString() for tile in startTiles])))
+		breadth_first_foreach(self.map, startTiles, undiscoveredCounterDepth, foreach_near_updated_tiles, None, lambda tile: tile.mountain, None, self.map.player_index)
 		duration = time.time() - startTime
 			
 		logging.info("Completed scanning territories in {:.3f}".format(duration))

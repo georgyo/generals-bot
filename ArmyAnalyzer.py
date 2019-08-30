@@ -30,6 +30,46 @@ class InfPathWay:
 		self.tiles = set()
 		self.tiles.add(tile)
 		self.seed_tile = tile
+		
+SENTINAL = "~"
+class MapMatrix:
+	def __init__(self, map, initVal = SENTINAL):
+		self.grid = new_value_matrix(map, initVal)
+
+	def add(self, item):
+		self.grid[item.x][item.y] = True
+
+	def __setitem__(self, key, item):
+		self.grid[key.x][key.y] = item
+
+	def __getitem__(self, key):
+		val = self.grid[key.x][key.y]
+		if val == SENTINAL:
+			raise KeyError((key.x,key.y))
+		return val
+
+	def __repr__(self):
+		return repr(self.grid)
+
+	def values(self):
+		all = []
+		for row in self.grid:
+			for item in row:
+				if item != SENTINAL:
+					all.append(item)
+		return all
+	
+	def __delitem__(self, key):
+		self.grid[key.x][key.y] = SENTINAL
+		
+	def has_key(self, k):
+		return self.grid[item.x][item.y] != SENTINAL
+
+	def __contains__(self, item):
+		return self.grid[item.x][item.y] != SENTINAL
+
+	def __unicode__(self):
+		return unicode(repr(self.grid))
 
 
 
@@ -41,7 +81,7 @@ class ArmyAnalyzer:
 		self.tileB = armyB
 		# path chokes are relative to the paths between A and B
 		self.pathChokes = set()
-		self.pathways = {}
+		self.pathways = MapMatrix(map)
 
 
 		if type(armyA) is Army:
@@ -74,8 +114,9 @@ class ArmyAnalyzer:
 			# map out choke counts. TODO i don't think this pathChoke stuff works :/ make sure to visualize it well and debug.
 			chokeKey = (self.aMap[tile.x][tile.y], self.bMap[tile.x][tile.y])
 			if not chokeKey in chokeCounterMap:
-				chokeCounterMap[chokeKey] = 0
-			chokeCounterMap[chokeKey] += 1
+				chokeCounterMap[chokeKey] = 1
+			else:
+				chokeCounterMap[chokeKey] += 1
 			
 
 		for tile in self.map.reachableTiles:
@@ -101,10 +142,12 @@ class ArmyAnalyzer:
 		queue.appendleft(tile)
 		while not len(queue) == 0:
 			currentTile = queue.pop()
+			if currentTile in self.pathways:
+				continue
 			currentTileDistance = self.aMap[currentTile.x][currentTile.y] + self.bMap[currentTile.x][currentTile.y]
-			if currentTileDistance < 150:
+			if currentTileDistance < 300:
 				#so not inf
-				if currentTileDistance == distance and currentTile not in self.pathways:
+				if currentTileDistance == distance:
 					#logging.info("    adding tile {}".format(currentTile.toString()))
 					path.add_tile(currentTile)
 					self.pathways[currentTile] = path

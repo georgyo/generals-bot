@@ -51,7 +51,6 @@ class DangerAnalyzer(object):
 		
 	def analyze(self, general, depth, armies):
 		self.scan(general)
-		minDanger = 1000
 
 		self.fastestVisionThreat = self.getVisionThreat(general, 10, armies)
 		self.fastestThreat = self.getFastestThreat(general, depth, armies)
@@ -61,6 +60,8 @@ class DangerAnalyzer(object):
 		
 
 	def getVisionThreat(self, general, depth, armies):
+		startTime = time.time()
+		logging.info("------  VISION threat analyzer: depth {}".format(depth))
 		curThreat = None
 		for tile in general.adjacents:
 			if tile.player != -1 and tile.player != general.player:
@@ -80,12 +81,13 @@ class DangerAnalyzer(object):
 		if curThreat.start.tile in armies:
 			army = armies[army]
 		analysis = ArmyAnalyzer(self.map, general, army)
+		logging.info("VISION threat analyzer took {:.3f}".format(time.time() - startTime))
 		return ThreatObj(curThreat.length, curThreat.value, curThreat, ThreatType.Vision, None, analysis)
 	
 
 	def getFastestThreat(self, general, depth, armies):
 		startTime = time.time()
-		logging.info("------\nfastest threat analyzer: depth {}".format(depth))
+		logging.info("------  fastest threat analyzer: depth {}".format(depth))
 		curThreat = None
 		saveTile = None
 		searchArmyAmount = -0.5
@@ -115,13 +117,13 @@ class DangerAnalyzer(object):
 					if path.value > 0 and (curThreat == None or path.length < curThreat.length or path.value > curThreat.value):
 						curThreat = path
 					army.expectedPath = path
-		logging.info("fastest threat analyzer took {:.3f}".format(time.time() - startTime))
 		if (curThreat == None):
 			return None
 		army = curThreat.start.tile
 		if curThreat.start.tile in armies:
 			army = armies[army]
 		analysis = ArmyAnalyzer(self.map, general, army)
+		logging.info("fastest threat analyzer took {:.3f}".format(time.time() - startTime))
 		return ThreatObj(curThreat.length - 1, curThreat.value, curThreat, ThreatType.Kill, saveTile, analysis)
 	
 	
