@@ -135,7 +135,8 @@ class ArmyTracker(object):
 		for army in list(self.armies.values()):
 			if army.scrapped:
 				logging.info("Army {} was scrapped last turn, deleting.".format(army.toString()))
-				del self.armies[army.tile]
+				if army.tile in self.armies and self.armies[army.tile] == army:
+					del self.armies[army.tile]
 				continue
 			elif army.player == self.map.player_index and not army.tile.visible:
 				logging.info("Army {} was ours but under fog now, so was destroyed. Scrapping.".format(army.toString()))
@@ -150,14 +151,17 @@ class ArmyTracker(object):
 					for entangled in army.entangledArmies:
 						logging.info("    removing {} from entangled {}".format(army.toString(), entangled.toString()))
 						entangled.entangledArmies.remove(army)
-					del self.armies[army.tile]
+					if army.tile in self.armies and self.armies[army.tile] == army:
+						del self.armies[army.tile]
 				continue
 			elif army.tile.delta.gainedSight and (army.tile.player == -1 or (army.tile.player != army.player and len(army.entangledArmies) > 0)):
 				logging.info("Army {} just uncovered was an incorrect army prediction. Disentangle and remove from other entangley bois".format(army.toString()))
 				for entangled in army.entangledArmies:
 					logging.info("    removing {} from entangled {}".format(army.toString(), entangled.toString()))
 					entangled.entangledArmies.remove(army)
-				del self.armies[army.tile]
+					
+				if army.tile in self.armies and self.armies[army.tile] == army:
+					del self.armies[army.tile]
 
 
 	def track_army_movement(self):

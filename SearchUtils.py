@@ -70,37 +70,45 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 	visited = [[None for _ in range(map.rows)] for _ in range(map.cols)]
 	if isinstance(goalList, dict):
 		for goal in goalList.keys():
-			(startDist, goalTargetArmy) = goalList[goal]			
+			(startDist, goalTargetArmy, goalIncModifier) = goalList[goal]			
 			if goal.mountain:
 				#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
 				continue			
 
-			goalInc = 0
-			if (goal.isCity or goal.isGeneral) and goal.player != -1:
-				goalInc = -0.5
-			startArmy = goal.army - 1 - goalTargetArmy
-			if goal.player != searchingPlayer:
-				startArmy = 0 - goal.army - 1 - goalTargetArmy
-				goalInc *= -1
+			goalInc = goalIncModifier
+			startArmy = goalIncModifier
+			
+			if searchingPlayer != goal.player:
+				startArmy = 0 + goalTargetArmy
+			else:
+				startArmy = 0 - goalTargetArmy
+
 			if ignoreGoalArmy:
-				startArmy = 0
+				# then we have to inversely increment so we dont have to figure that out in the loop every time
+				if searchingPlayer != goal.player:
+					if (negativeTiles == None or goal not in negativeTiles):
+						 startArmy -= goal.army
+				else:
+					if (negativeTiles == None or goal not in negativeTiles):
+						 startArmy += goal.army
+
 			startVal = (startDist, 0 - startArmy)
 			frontier.put((startVal, goal, startDist, startArmy, goalInc, None))
 	else:
 		for goal in goalList:
 			if goal.mountain:
 				#logging.info("BFS DEST SKIPPING MOUNTAIN {},{}".format(goal.x, goal.y))
-				continue			
+				continue
 
 			goalInc = 0
-			startArmy = goal.army - 1
-			if ignoreGoalArmy:
-				startArmy = 0
-			if (goal.isCity or goal.isGeneral) and goal.player != -1:
-				goalInc = -0.5
-			if goal.player != searchingPlayer:
-				startArmy = 0 - goal.army - 1
-				goalInc *= -1
+			startArmy = 0
+			if ignoreGoalArmy and (negativeTiles == None or goal not in negativeTiles):
+				# then we have to inversely increment so we dont have to figure that out in the loop every time
+				if searchingPlayer != goal.player:
+					startArmy = 0 - goal.army
+				else:
+					startArmy = goal.army
+
 			startVal = (0, 0 - startArmy)
 			frontier.put((startVal, goal, 0, startArmy, goalInc, None))
 	start = time.time()
@@ -115,22 +123,33 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 			
 		(prioVals, current, dist, army, goalInc, fromTile) = frontier.get()
 		if visited[current.x][current.y] != None:
+			#if not noLog and iter < 100:
+			#	logging.info("PopSkipped visited current {}, army {}, goalInc {}".format(current.toString(), army, goalInc))
 			continue		
 		if (skipTiles != None and current in skipTiles):
-			continue					
-		if (current.mountain or (current.isCity and noNeutralCities and current.player == -1) or (not current.discovered and current.isobstacle())):
+			if not noLog and iter < 100:
+				logging.info("PopSkipped skipTile current {}, army {}, goalInc {}, targetArmy {}".format(current.toString(), army, goalInc, targetArmy))
 			continue
-		##TODO HACK, REMOVE AFTER FIXING GENERAL MOVEABILITY
-		inc = 0 if not (current.isCity or current.isGeneral) else dist / 2
-		nextArmy = army - 1
+		
+		if (current.mountain or (current.isCity and noNeutralCities and current.player == -1 and current not in goalList) or (not current.discovered and current.isobstacle())):
+			if not noLog and iter < 100:
+				logging.info("PopSkipped Mountain, neutCity or Obstacle current {}".format(current.toString()))
+			continue
+		
+		nextArmy = army - 1 + goalInc
+		if (current.isCity and current.player != -1) or current.isGeneral:
+			if current.player == searchingPlayer:
+				goalInc -= 0.5
+			else:
+				goalInc += 0.5
 		if (negativeTiles == None or current not in negativeTiles):
 			if (searchingPlayer == current.player):
 				if (current.isCity and dontEvacCities):								
-					nextArmy += (current.army + inc) // 2
+					nextArmy += (current.army // 2)
 				else:
-					nextArmy += current.army + inc
+					nextArmy += current.army
 			else:
-				nextArmy -= (current.army + inc)
+				nextArmy -= (current.army)
 		newDist = dist + 1
 		
 		visited[current.x][current.y] = (nextArmy, fromTile)
@@ -142,10 +161,14 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 			endNode = current
 		if newDist > depthEvaluated:
 			depthEvaluated = newDist
-			targetArmy += goalInc
+			#targetArmy += goalInc
 			if foundGoal:
+				if not noLog and iter < 100:
+					logging.info("GOAL popped {}, army {}, goalInc {}, targetArmy {}, processing".format(current.toString(), nextArmy, goalInc, targetArmy))
 				break
-
+			
+		if not noLog and iter < 100:
+			logging.info("Popped current {}, army {}, goalInc {}, targetArmy {}, processing".format(current.toString(), nextArmy, goalInc, targetArmy))
 		if (newDist <= maxDepth and not foundGoal):
 			for next in current.moveable: #new spots to try
 				frontier.put(((newDist, 0 - nextArmy), next, newDist, nextArmy, goalInc, current))
@@ -1209,7 +1232,7 @@ def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth 
 		if (dist <= maxDepth and not foundGoal):
 			for next in current.moveable: #new spots to try
 					
-				if (next.mountain or (noNeutralCities and next.player == -1 and next.isCity) or (not next.discovered and next.isobstacle())):
+				if (next.mountain or (noNeutralCities and next.isCity and next.player == -1) or (not next.discovered and next.isobstacle())):
 					continue
 				inc = 0 if not ((next.isCity and next.player != -1) or next.isGeneral) else dist / 2
 				#new_cost = cost_so_far[current] + graph.cost(current, next)
@@ -1273,12 +1296,17 @@ def breadth_first_find_queue(map, startTiles, goalFunc, maxTime = 0.1, maxDepth 
 
 
 def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc = None, skipFunc = None, skipTiles = None, searchingPlayer = -2, noLog = False):
+	'''
+	skipped tiles are still foreached, they just aren't traversed
+	'''
 	if searchingPlayer == -2:
 		searchingPlayer = map.player_index
 	frontier = deque()
 	globalVisited = new_value_matrix(map, False)
 	if skipTiles != None:
 		for tile in skipTiles:
+			if not noLog:
+				logging.info("    skipTiles contained {}".format(tile.toString()))
 			globalVisited[tile.x][tile.y] = True
 
 	for tile in startTiles:
@@ -1307,14 +1335,17 @@ def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc =
 		if globalVisited[current.x][current.y]:
 			continue
 		globalVisited[current.x][current.y] = True
-		if skipFunc != None and skipFunc(current):
+		if current.mountain or (not current.discovered and current.isobstacle()):
 			continue
 		foreachFunc(current)
+		# intentionally placed after the foreach func, skipped tiles are still foreached, they just aren't traversed
+		if (skipFunc != None and skipFunc(current)):
+			continue
 
 		if (dist > maxDepth):
 			break
-		for next in current.moveable: #new spots to try					
-			newDist = dist + 1
+		newDist = dist + 1
+		for next in current.moveable: #new spots to try
 			frontier.appendleft((next, newDist))
 	if not noLog:
 		logging.info("Completed breadth_first_foreach. startTiles[0] {},{}: ITERATIONS {}, DURATION {:.3f}, DEPTH {}".format(startTiles[0].x, startTiles[0].y, iter, time.time() - start, dist))
@@ -1324,6 +1355,9 @@ def breadth_first_foreach(map, startTiles, maxDepth, foreachFunc, negativeFunc =
 
 
 def breadth_first_foreach_dist(map, startTiles, maxDepth, foreachFunc, negativeFunc = None, skipFunc = None, skipTiles = None, searchingPlayer = -2, noLog = False):
+	'''
+	skipped tiles are still foreached, they just aren't traversed
+	'''
 	if searchingPlayer == -2:
 		searchingPlayer = map.player_index
 	frontier = deque()
@@ -1355,14 +1389,16 @@ def breadth_first_foreach_dist(map, startTiles, maxDepth, foreachFunc, negativeF
 		if globalVisited[current.x][current.y]:
 			continue
 		globalVisited[current.x][current.y] = True
-		if skipFunc != None and skipFunc(current):
+		if current.mountain or (not current.discovered and current.isobstacle()):
 			continue
 		foreachFunc(current, dist)
-
+		# intentionally placed after the foreach func, skipped tiles are still foreached, they just aren't traversed
+		if (skipFunc != None and skipFunc(current)):
+			continue
 		if (dist > maxDepth):
 			break
+		newDist = dist + 1
 		for next in current.moveable: #new spots to try					
-			newDist = dist + 1
 			frontier.appendleft((next, newDist))
 	if not noLog:
 		logging.info("Completed breadth_first_foreach_dist. startTiles[0] {},{}: ITERATIONS {}, DURATION {:.3f}, DEPTH {}".format(startTiles[0].x, startTiles[0].y, iter, time.time() - start, dist))
@@ -1373,22 +1409,18 @@ def build_distance_map(map, startTiles, skipTiles = None):
 	distanceMap = new_value_matrix(map, INF)
 	
 	if skipTiles == None:
-		skipTiles = set()
+		skipTiles = None
 	elif not isinstance(skipTiles, set):
 		newSkipTiles = set()
 		for tile in skipTiles:
 			newSkipTiles.add(tile)
 		skipTiles = newSkipTiles
 
-	for tile in map.cities:
-		if tile.player == -1:
-			skipTiles.add(tile)
-
 	def bfs_dist_mapper(tile, dist):
 		if dist < distanceMap[tile.x][tile.y]:
 			distanceMap[tile.x][tile.y] = dist
 
-	breadth_first_foreach_dist(map, startTiles, 1000, bfs_dist_mapper, skipTiles = skipTiles)
+	breadth_first_foreach_dist(map, startTiles, 1000, bfs_dist_mapper, skipTiles = skipTiles, skipFunc = lambda tile: tile.isCity and tile.player == -1)
 	return distanceMap
 
 

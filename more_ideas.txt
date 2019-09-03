@@ -40,31 +40,16 @@ Goals for tomorrow: Army tracking and interception
 
 
 
-11:07 PM] Ethryn: http://bot.generals.io/replays/He92ZQYMB
-second round: inefficient troop usage (leaving 2s lying around)
-third round: ditto (why gather 10 troops to not use them)
-turn 72 not taking territory
-turn 96? moving backwards
-turn 125-end general discovered, no defense
-[11:09 PM] EklipZ: what in particular would you be doing with the 2's on second round
-[11:09 PM] Ethryn: http://bot.generals.io/replays/BefNW7tMS
-played very well? attacks could be very slightly later
-[11:09 PM] Ethryn: on the second round lemme screenshot
-[11:10 PM] EklipZ: so when i make the attacks later, he actually plays worse
-[11:11 PM] EklipZ: in that he generally just ends up taking less tiles than opp due to delaying, so he needs to be taking tiles earlier still and then attack with the main attack later?
-[11:11 PM] Ethryn:
-
-[11:12 PM] Ethryn: something like that -- use the flanks to get some coverage, gather all troops in the yellow region, and attack
-[11:12 PM] Ethryn: it probably isn't anywhere near optimal but it's my personally preferred playstyle
+https://puu.sh/E0y8I/5035d1b34b.png
 [11:13 PM] EklipZ: can you describe your strategy for choosing where the green arrows go?
 [11:14 PM] EklipZ: i can easily gather to all leaves, but that ends up just blobbing (like the bot used to if you remember many many iterations ago)
 [11:14 PM] EklipZ: so there needs to be intelligent selection on specific points to take some flanks to, but I haven't come up with a process for that
+https://puu.sh/E0y8I/5035d1b34b.png
 [11:14 PM] Ethryn: green arrows are basically to cover all potential attack routes and anything that's too far from where i want to send my army
 [11:14 PM] EklipZ: i've been considering it for a bit, but don't have a good idea on how I would select that
 [11:14 PM] Ethryn: idk how to translate that into an algorithm though
 [11:15 PM] EklipZ: yeah, thats the hard part really
 [11:15 PM] Ethryn: it's also dependent on map size -- and terrain and stuff
-[11:15 PM] EklipZ: in what way?
 [11:16 PM] Ethryn: if there's only one exit to a cavelike place and not many towers, i will barrel all my troops out of there
 [11:16 PM] Ethryn: if there are towers, i might try to take a bunch of land inside and quickly gather for a tower on round3
 [11:17 PM] Ethryn: if it's a large map, i'll lean more on exploring over defending
@@ -93,10 +78,7 @@ In the future, urban planners could lose their jobs to ultra-efficient slime mol
 [11:22 PM] EklipZ: I think its like a 3 algorithm procedure or something but yeah I think thats doable now that I'm really thinking it through
 [11:23 PM] EklipZ: (where a choke might just be a corner going around some mountains, I consider any tile that must always be on the shortest path a choke, even if you could technically go around it with no obstacles)
 [11:27 PM] EklipZ: I think the process would be:
-1: pick where the enemy general probably is, (already done)
-2: map a route from all leaves of my territory to that location, or maybe just like 3 or 4 paths that hit different chokes. Keep searching until all chokes are found? I don't have algos to identify chokes yet, but I have ideas on how to do them efficiently. Finding the longer 'alternate paths' is probably the harder part of this.
-3: Pick several of the routes by some selection criteria that I haven't thought through yet. Probably the ones that are furthest away from 'the main attack path' .
-4: Gather troops to either the main attack path, or along the routes selected in (3) above, whichever is closer
+
 [11:28 PM] EklipZ: and you do this same green line thing once the map has been covered and you're actually fighting for territory, right? Pretty similar process I imagine?
 [11:33 PM] EklipZ: so effectively, he needs to use some of his leaves while waiting a little longer to launch his main attack
 [11:33 PM] EklipZ: is more or less the synopsis on why he is getting behind?
@@ -109,3 +91,22 @@ sounds very right
 [11:35 PM] EklipZ: like, when do you decide to wait until you see the opps army before launching? etc
 [11:38 PM] Ethryn: land counts
 [11:38 PM] Ethryn: if i'm ahead in land, i defend, otherwise i attack is the most general rule of thumb
+
+
+
+
+^ TLDR
+it's also dependent on map size -- and terrain and stuff
+if there's only one exit to a cavelike place and not many towers, i will barrel all my troops out of there
+if there are towers, i might try to take a bunch of land inside and quickly gather for a tower on round3
+if it's a large map, i'll lean more on exploring over defending
+if it's a strong opponent with not many attack routes, i'd go for a slightly later attack
+if it's a strong opponent with lots of attack routes, i send out lots of small feelers and then launch my troops from my general without much gathering
+
+
+Expand army that is closer to flanks towards flanks. 1 move tile taking is often superior here. Dont gather it to main path unless on super-defense.
+    - https://puu.sh/E0y8I/5035d1b34b.png
+
+Implement Prune for MST gather, then switch from get_gather_move or whatever to the new one.
+Go on super defense if our general found and opp appears to stop expanding.
+Now that we have analysis on threats, gather to chokes.
