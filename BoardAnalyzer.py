@@ -63,11 +63,11 @@ class BoardAnalyzer:
 
 		# order by: totalDistance, then pick tile by closestToOpponent
 
-		heap = PriorityQueue()
 		includedPathways = set()
 		for move in leafMoves:
 			# sometimes these might be cut off by only being routed through the general
-			if move.dest in self.intergeneral_analysis.pathways and move.source in self.intergeneral_analysis.pathways:
+			neutralCity = (move.dest.isCity and move.dest.player == -1)
+			if not neutralCity and move.dest in self.intergeneral_analysis.pathways and move.source in self.intergeneral_analysis.pathways:
 				pathwaySource = self.intergeneral_analysis.pathways[move.source]
 				pathwayDest = self.intergeneral_analysis.pathways[move.dest]
 				if pathwaySource.distance <= maxAltLength:
@@ -76,8 +76,9 @@ class BoardAnalyzer:
 							# moving to a shorter path or moving along same distance path
 							# If getting further from our general (and by extension closer to opp since distance is equal)
 							gettingFurtherFromOurGen = self.intergeneral_analysis.aMap[move.source.x][move.source.y] < self.intergeneral_analysis.aMap[move.dest.x][move.dest.y]
-							# not more than 5 tiles behind our general, effectively
-							reasonablyCloseToTheirGeneral = self.intergeneral_analysis.bMap[move.dest.x][move.dest.y] < 6 + self.intergeneral_analysis.aMap[self.intergeneral_analysis.tileB.x][self.intergeneral_analysis.tileB.y]
+							# not more than cutoffDist tiles behind our general, effectively
+							cutoffDist = 5
+							reasonablyCloseToTheirGeneral = self.intergeneral_analysis.bMap[move.dest.x][move.dest.y] < cutoffDist + self.intergeneral_analysis.aMap[self.intergeneral_analysis.tileB.x][self.intergeneral_analysis.tileB.y]
 					
 							if (gettingFurtherFromOurGen and reasonablyCloseToTheirGeneral):
 								includedPathways.add(pathwaySource)

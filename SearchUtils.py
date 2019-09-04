@@ -60,7 +60,15 @@ def count(list, filter):
 	return count
 
 
-def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, negativeTiles = None, searchingPlayer = -2, dontEvacCities = False, dupeThreshold = 3, noNeutralCities = True, skipTiles = None, ignoreGoalArmy = False, noLog = False):
+def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxDepth = 20, 
+							  negativeTiles = None, 
+							  searchingPlayer = -2, 
+							  dontEvacCities = False, 
+							  dupeThreshold = 3, 
+							  noNeutralCities = True, 
+							  skipTiles = None, 
+							  ignoreGoalArmy = False, 
+							  noLog = True):
 	'''
 	GoalList can be a dict that maps from start tile to (startDist, goalTargetArmy)
 	'''
@@ -136,7 +144,7 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 				logging.info("PopSkipped Mountain, neutCity or Obstacle current {}".format(current.toString()))
 			continue
 		
-		nextArmy = army - 1 + goalInc
+		nextArmy = army - 1 - goalInc
 		if (current.isCity and current.player != -1) or current.isGeneral:
 			if current.player == searchingPlayer:
 				goalInc -= 0.5
@@ -159,13 +167,12 @@ def dest_breadth_first_target(map, goalList, targetArmy = 1, maxTime = 0.1, maxD
 			foundDist = newDist
 			foundArmy = nextArmy
 			endNode = current
+			if not noLog and iter < 100:
+				logging.info("GOAL popped {}, army {}, goalInc {}, targetArmy {}, processing".format(current.toString(), nextArmy, goalInc, targetArmy))
+			break
 		if newDist > depthEvaluated:
 			depthEvaluated = newDist
 			#targetArmy += goalInc
-			if foundGoal:
-				if not noLog and iter < 100:
-					logging.info("GOAL popped {}, army {}, goalInc {}, targetArmy {}, processing".format(current.toString(), nextArmy, goalInc, targetArmy))
-				break
 			
 		if not noLog and iter < 100:
 			logging.info("Popped current {}, army {}, goalInc {}, targetArmy {}, processing".format(current.toString(), nextArmy, goalInc, targetArmy))
