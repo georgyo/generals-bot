@@ -401,6 +401,9 @@ class EklipZBot(object):
 		realDist = self.distance_from_general(self.targetPlayerExpectedGeneralLocation)
 		longSpawns = self.target_player_gather_path != None and realDist > 22
 		genPlayer = self._map.players[self.general.player]
+		targPlayer = None
+		if self.targetPlayer != -1:
+			targPlayer = self._map.players[self.targetPlayer]
 		# hack removed longspawns, this doesn't actually help?
 		if False and longSpawns and genPlayer.tileCount > 75:
 			# LONG SPAWNS
@@ -457,10 +460,6 @@ class EklipZBot(object):
 		if self.defendEconomy:
 			split += 3
 		split += randomVal
-		offset = self._map.turn % cycleDuration
-		if offset % 50 != 0:
-			# When this gets set on random turns, if we don't set it to 0 it will always keep recycling on that offkilter turn.
-			offset = 0
 
 		#if self._map.turn % self.timings.cycleTurns < self.timings.cycleTurns / 14 and not self.winning_on_economy(1.25, 0, self.targetPlayer, -3):
 		#	useLeafMove = True
@@ -471,22 +470,47 @@ class EklipZBot(object):
 		#elif not self.defendEconomy and self._map.turn % self.timings.cycleTurns < self.timings.cycleTurns / 6 and not self.winning_on_economy(1.07, 0, self.targetPlayer, -5):
 		#	useLeafMove = True
 
-		quickExpandSplit = 1
+		quickExpandSplit = 10
 		if self._map.turn > 2:
-			baseSubtract = 29
-			logFactor = 4
-			logVal = math.log(realDist, 2)
-			preInt = logFactor * logVal
-			quickExpandSplit = min(15, cycleDuration - baseSubtract - int(preInt))
-			logging.info("quickExpandSplit: min(15, {} - {} - (logFactor {} * math.log(realDist {}, 2) {:.2f} - int({:.2f}) = {}".format(cycleDuration, baseSubtract, logFactor, realDist, logVal, preInt, quickExpandSplit))
+			#baseSubtract = 25
+			#logFactor = 6
+			#logVal = math.log(realDist, 2)
+			#preInt = logFactor * logVal
+			#quickExpandSplit = min(15, cycleDuration - baseSubtract - int(preInt))
+			#logging.info("quickExpandSplit: min(15, {} - {} - (logFactor {} * math.log(realDist {}, 2) {:.2f} - int({:.2f}) = {}".format(cycleDuration, baseSubtract, logFactor, realDist, logVal, preInt, quickExpandSplit))
+			if self.targetPlayer != -1:
+				quickExpandSplit = min(4, targPlayer.tileCount - genPlayer.tileCount + 3)
+				logging.info("quickExpandSplit: {}".format(quickExpandSplit))
+
 		# for launching to actually attack / explore
 		launchDist = 15
 		if self.target_player_gather_path != None:
 			launchDist = self.target_player_gather_path.length // 2
 		launchTiming = cycleDuration - countOnPath - launchDist
-		if launchTiming < split:
+		if launchTiming < split or self.allIn:
 			logging.info("launchTiming would have been {} which was less than split {}, setting to split.".format(launchTiming, split))
 			launchTiming = split
+
+
+		if self._map.turn >= 150 and random.choice(range(1,10)) == 9:
+			# 1 in 10 chance, make a huge attack
+			logging.info("LOL JK, making a huge attack in timings because 1/10 chance rolled true")
+
+			quickExpandSplit = 0
+			if genPlayer.tileCount > 50 + countOnPath:
+				cycleDuration = 100
+				split = min(75, genPlayer.tileCount - countOnPath)
+			else:
+				cycleDuration = 50
+				split = min(40, genPlayer.tileCount - countOnPath)
+
+			launchTiming = split
+			
+		offset = self._map.turn % cycleDuration
+		if offset % 50 != 0:
+			# When this gets set on random turns, if we don't set it to 0 it will always keep recycling on that offkilter turn.
+			offset = 0
+
 		# should usually be 0 except the first turn
 		correction = self._map.turn % 50
 		timings = Timings(cycleDuration, quickExpandSplit, split, launchTiming, offset, self._map.turn + cycleDuration - correction)
@@ -1172,11 +1196,11 @@ class EklipZBot(object):
 		threatDefenseLength = 2 * self.distance_from_general(self.targetPlayerExpectedGeneralLocation) // 3 + 1
 		if self.targetPlayerExpectedGeneralLocation.isGeneral:
 			threatDefenseLength = self.distance_from_general(self.targetPlayerExpectedGeneralLocation) // 2 + 2 
-		if (len(paths) == 0 and threat != None 
+		if (len(paths) == 0 and threat != None and threat.threatType == ThreatType.Kill
 					and threat.path.length < threatDefenseLength
 					and not self.allIn
 					and self._map.remainingPlayers < 4 and threat.threatPlayer == self.targetPlayer):
-			logging.info("*\\*\\*\\*\\*\\*\n  Kill threat??? ({:.3f} in)".format(time.time() - start))
+			logging.info("*\\*\\*\\*\\*\\*\n  Kill (non-vision) threat??? ({:.3f} in)".format(time.time() - start))
 			threatKill = self.kill_threat(threat)
 			if threatKill and self.worth_path_kill(threatKill, threat.path, threat.armyAnalysis):
 				if threat.path.start.tile in self.armyTracker.armies:
@@ -1196,14 +1220,14 @@ class EklipZBot(object):
 					and threat.path.start.tile.visible 
 					and self.should_kill(threat.path.start.tile)
 					and self.just_moved(threat.path.start.tile)
-					and threat.path.length < self.distance_from_general(self.targetPlayerExpectedGeneralLocation) // 2 + 1
+					and threat.path.length < min(6, self.distance_from_general(self.targetPlayerExpectedGeneralLocation) // 2 + 1)
 					and self._map.remainingPlayers < 4 and threat.threatPlayer == self.targetPlayer):
 			logging.info("*\\*\\*\\*\\*\\*\n  Kill vision threat. ({:.3f} in)".format(time.time() - start))
 			# Just kill threat then, nothing crazy
 			path = self.kill_enemy_path(threat.path, allowGeneral = True)
-			visionKillDistance = 4
 
-			if path and self.worth_path_kill(path, threat.path, threat.armyAnalysis, visionKillDistance):
+			visionKillDistance = 5
+			if path != None and self.worth_path_kill(path, threat.path, threat.armyAnalysis, visionKillDistance):
 				if (threat.path.start.tile in self.armyTracker.armies):
 					self.targetingArmy = self.armyTracker.armies[threat.path.start.tile]
 				self.info("Killing vision threat {} with path {}".format(threat.path.start.tile.toString(), path.toString()))
@@ -1212,7 +1236,10 @@ class EklipZBot(object):
 				move.move_half = self.should_kill_path_move_half(path)
 				return move
 			elif threat.path.start.tile == self.targetingArmy:
+				logging.info("threat.path.start.tile == self.targetingArmy and not worth_path_kill. Setting targetingArmy to None")
 				self.targetingArmy = None
+			elif path == None:				
+				logging.info("No vision threat kill path?")
 				
 				
 		demolishingTargetPlayer = (self.winning_on_army(1.5, useFullArmy = False, playerIndex = self.targetPlayer)
@@ -1725,15 +1752,16 @@ class EklipZBot(object):
 		#move = self.get_gather_move(gathers, None, 1, 0, preferNeutral = True)
 		move = self.get_tree_move_default(gathers)
 		if move == None:
-			self.info("Found-no-moves-gather found no move ?????")
+			self.info("Found-no-moves-gather found no move ????? Setting launch to now.")
+			self.timings.launchTiming = self._map.turn % self.timings.cycleTurns
 		elif (self.is_move_safe_valid(move)):
 			return move
-		elif move != None:
+		else:
 			self.info("Found-no-moves-gather move {},{} -> {},{} was not safe or valid!".format(move.source.x, move.source.y, move.dest.x, move.dest.y))
 
-		if (allowRetry and time.time() - start < 0.15):
-			logging.info("Retrying.")
-			return self.select_move(False)
+		#if (allowRetry and time.time() - start < 0.15):
+		#	logging.info("Retrying.")
+		#	return self.select_move(False)
 		return None
 
 	def should_kill(self, tile):
@@ -3062,7 +3090,7 @@ class EklipZBot(object):
 				return (cityCount, negUnfriendlyTileCount, distToGen, negArmy)
 			
 			# shitty hack to stop dropping city gathers when gathers are interrupted. Really, timings should store that info and delaying a gather should still complete the critical tiles on the primary gather
-			if player.cityCount > 4 or nonCityLeafCount < 4:
+			if nonCityLeafCount < 3 * player.cityCount:
 				logging.info("Using default_high_cities_func for gather prio. player.cityCount {} > 4 or nonCityLeafCount {} < 4".format(player.cityCount, nonCityLeafCount))
 				priorityFunc = default_high_cities_func
 			else:
@@ -4395,7 +4423,7 @@ class EklipZBot(object):
 		else:
 			negativeTiles = negativeTiles.copy()
 				
-		if splitTurn < self.timings.launchTiming and self._map.turn > 100:
+		if splitTurn < self.timings.launchTiming and self._map.turn > 50:
 			for tile in self.target_player_gather_targets:
 				if tile.player == self.general.player:
 					negativeTiles.add(tile)
