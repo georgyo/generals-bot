@@ -6,7 +6,7 @@
 import logging
 import random
 
-from base import bot_base
+from .  import bot_base
 from .client.constants import *
 
 ######################### Move Priority Capture #########################
@@ -103,6 +103,8 @@ def _move_path_capture(path):
 
 
 def should_move_half(gamemap, source, dest=None):
+    if dest == False:
+        return False
     if dest != None and dest.isCity:
         return False
 

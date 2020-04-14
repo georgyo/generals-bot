@@ -5,7 +5,7 @@
 """
 
 import logging
-from base import bot_moves
+from .base import bot_moves
 
 # Show all logging
 logging.basicConfig(level=logging.DEBUG)
@@ -75,7 +75,7 @@ def move_toward():
 ######################### Main #########################
 
 # Start Game
-import startup
+from . import startup
 
 if __name__ == "__main__":
     startup.startup(make_move, botName="PurdueBot-B2")

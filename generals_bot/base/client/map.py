@@ -5,6 +5,7 @@
 """
 
 import logging
+import random
 
 from .constants import *
 from .tile import Tile

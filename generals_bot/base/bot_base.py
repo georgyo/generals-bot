@@ -143,6 +143,8 @@ class GeneralsBot(object):
     ######################### Move Making #########################
 
     def place_move(self, source, dest, move_half=False):
+        if source == False or dest == False:
+            return False
         if self._map.isValidPosition(dest.x, dest.y):
             self._game.move(source.y, source.x, dest.y, dest.x, move_half)
             if SHOULD_DIRTY_MAP_ON_MOVE:

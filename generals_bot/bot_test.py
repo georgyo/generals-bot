@@ -6,7 +6,7 @@
 
 import logging
 import time
-from base import bot_moves
+from .base import bot_moves
 
 PRINT_TIMING = False
 PRINT_MOVES = False
@@ -81,7 +81,7 @@ def move_toward():
 ######################### Main #########################
 
 # Start Game
-import startup
+from . import startup
 
 if __name__ == "__main__":
     startup.startup(make_move, botName="PurdueBot-T")

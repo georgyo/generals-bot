@@ -182,7 +182,7 @@ class Tile(object):
         dest_distance = 9999
         for tile in path:
             distance = self.distance_to(tile)
-            if distance < tile_distance:
+            if distance < 1:
                 dest = tile
                 dest_distance = distance
 

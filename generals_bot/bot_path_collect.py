@@ -6,7 +6,7 @@
 
 import logging
 import random
-from base import bot_base, bot_moves
+from .base import bot_base, bot_moves
 
 # Show all logging
 logging.basicConfig(level=logging.INFO)
@@ -182,7 +182,9 @@ def move_collect_to_path():
 ######################### Main #########################
 
 # Start Game
-import startup
+from . import startup
+def run():
+    startup.startup(make_move, botName="PurdueBot-P2")
 
 if __name__ == "__main__":
     startup.startup(make_move, botName="PurdueBot-P2")
