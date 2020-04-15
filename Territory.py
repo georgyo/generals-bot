@@ -9,7 +9,9 @@ import logging
 import time
 import json
 from SearchUtils import *
-from test.test_float import INF
+import math
+
+math = math.inf
 
 # attempts to classify tiles into territories.
 class TerritoryClassifier():

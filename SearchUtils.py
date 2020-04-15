@@ -14,9 +14,12 @@ from queue import PriorityQueue
 from pprint import pprint,pformat
 from DataModels import PathNode, TreeNode, Move
 from Path import Path, PathMove
-from test.test_float import INF
+#from test.test_float import INF
 from ViewInfo import ViewInfo, PathColorer
 
+import math
+
+INF = math.inf
 
 
 

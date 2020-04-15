@@ -27,7 +27,8 @@ from dangerAnalyzer import DangerAnalyzer, ThreatType
 from DataModels import get_tile_set_from_path, reverse_path, get_player_army_amount_on_path, get_tile_list_from_path
 from Directives import *
 from BasicPath import *
-from test.test_float import INF
+#from test.test_float import INF
+INF = math.inf
 from Path import Path, PathMove, PathFromPathNode
 from History import *
 from Territory import *

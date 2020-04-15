@@ -76,7 +76,7 @@ class GeneralsBot(object):
 
     def _start_game_thread(self):
         # Create Game
-        if (self._gameType in ['1v1','ffa','private']):
+        if (self._gameType in ['1v1','ffa','private','team']):
             self._game = generals.Generals("efg" + self._name, self._name, self._gameType, gameid=self._privateRoomID, public_server=self._public_server)
         elif (self._gameType == "team"): # team
             self._game = generals.Generals("efg" + self._name, self._name, 'team')

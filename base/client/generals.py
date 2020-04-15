@@ -25,7 +25,7 @@ _LOG_WS = False
 class Generals(object):
 	def __init__(self, userid, username, mode="1v1", gameid=None,
 				 force_start=False, public_server=False):
-		self.bot_key = "sd09fjd203i0ejwi"
+		self.bot_key = os.environ.get("GENERALS_BOT_KEY", "sd09fjd203i0ejwi")
 		self._lock = threading.RLock()
 		self.lastCommunicationTime = time.time()
 		# clearly, I do not condone racist / sexist words or mean comments. The bot does not say any of these. 
@@ -87,7 +87,7 @@ class Generals(object):
 		elif mode == "1v1":
 			self._send(["join_1v1", userid, self.bot_key])
 		elif mode == "team":
-			self._send(["join_team", userid, self.bot_key])
+			self._send(["join_team", gameid, self.bot_key])
 		elif mode == "ffa":
 			self._send(["play", userid, self.bot_key])
 		else:
