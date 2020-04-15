@@ -8,10 +8,10 @@
 import logging
 import time
 import json
-from SearchUtils import *
+from .SearchUtils import *
 from collections import deque
 from queue import PriorityQueue
-from Path import Path
+from .Path import Path
 
 
 class Army(object):

@@ -11,22 +11,22 @@ import sys
 import traceback
 import time
 import json
-from base import bot_base
-from base.bot_base import _create_thread
+from .base import bot_base
+from .base.bot_base import _create_thread
 from copy import deepcopy
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
-from ViewInfo import ViewInfo
-from DataModels import GatherNode, PathNode, stringPath, Move
-from SearchUtils import (
+from .ViewInfo import ViewInfo
+from .DataModels import GatherNode, PathNode, stringPath, Move
+from .SearchUtils import (
     dest_breadth_first_target,
     a_star_kill,
     breadth_first_find,
     breadth_first_find_queue,
 )
-from dangerAnalyzer import DangerAnalyzer, ThreatType
-from DataModels import (
+from .dangerAnalyzer import DangerAnalyzer, ThreatType
+from .DataModels import (
     get_tile_set_from_path,
     get_tile_set_from_path_tuple,
     reverse_path,
@@ -35,7 +35,8 @@ from DataModels import (
     get_tile_list_from_path,
     get_tile_list_from_path_tuple,
 )
-from test.test_float import INF
+import math
+INF = math.inf
 
 
 """

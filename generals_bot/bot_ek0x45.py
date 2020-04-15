@@ -12,33 +12,33 @@ import traceback
 import time
 import json
 import math
-from base import bot_base
-from base.bot_base import _create_thread
+from .base import bot_base
+from .base.bot_base import _create_thread
 from copy import deepcopy
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
-from ViewInfo import ViewInfo, PathColorer
-from DataModels import TreeNode, Move, PathNode
-from ArmyAnalyzer import *
-from BoardAnalyzer import *
-from SearchUtils import *
-from dangerAnalyzer import DangerAnalyzer, ThreatType
-from DataModels import (
+from .ViewInfo import ViewInfo, PathColorer
+from .DataModels import TreeNode, Move, PathNode
+from .ArmyAnalyzer import *
+from .BoardAnalyzer import *
+from .SearchUtils import *
+from .dangerAnalyzer import DangerAnalyzer, ThreatType
+from .DataModels import (
     get_tile_set_from_path,
     reverse_path,
     get_player_army_amount_on_path,
     get_tile_list_from_path,
 )
-from Directives import *
-from BasicPath import *
+from .Directives import *
+from .BasicPath import *
 
 # from test.test_float import INF
 INF = math.inf
-from Path import Path, PathMove, PathFromPathNode
-from History import *
-from Territory import *
-from ArmyTracker import *
+from .Path import Path, PathMove, PathFromPathNode
+from .History import *
+from .Territory import *
+from .ArmyTracker import *
 
 GENERAL_HALF_TURN = 20000
 GATHER_SWITCH_POINT = 30
@@ -8293,7 +8293,7 @@ def place_move(source, dest, moveHalf=False):
 
 
 # Start Game
-import startup
+from . import startup
 
 if __name__ == "__main__":
     startup.startup(make_move, "EklipZTest2")

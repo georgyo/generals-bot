@@ -13,8 +13,8 @@ import json
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
-from SearchUtils import a_star_kill, dest_breadth_first_target
-from DataModels import (
+from .SearchUtils import a_star_kill, dest_breadth_first_target
+from .DataModels import (
     stringPath,
     PathFromPathNode,
     get_tile_list_from_path,

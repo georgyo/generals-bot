@@ -10,13 +10,13 @@ import random
 from copy import deepcopy
 import time
 import json
-from ArmyAnalyzer import *
+from .ArmyAnalyzer import *
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
-from SearchUtils import *
-from DataModels import *
-from Path import PathFromPathNode
+from .SearchUtils import *
+from .DataModels import *
+from .Path import PathFromPathNode
 from enum import Enum
 
 

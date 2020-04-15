@@ -1,4 +1,4 @@
-from Directives import *
+from .Directives import *
 
 
 class BasicPath(Directive):

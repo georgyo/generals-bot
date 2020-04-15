@@ -8,11 +8,11 @@
 import logging
 import time
 import json
-from ArmyAnalyzer import *
-from SearchUtils import *
+from .ArmyAnalyzer import *
+from .SearchUtils import *
 from collections import deque
 from queue import PriorityQueue
-from Path import Path
+from .Path import Path
 
 
 class BoardAnalyzer:

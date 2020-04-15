@@ -8,11 +8,11 @@
 import logging
 import time
 import json
-from ArmyTracker import *
-from SearchUtils import *
+from .ArmyTracker import *
+from .SearchUtils import *
 from collections import deque
 from queue import PriorityQueue
-from Path import Path
+from .Path import Path
 
 
 class PathWay:

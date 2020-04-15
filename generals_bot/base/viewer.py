@@ -11,9 +11,9 @@ import threading
 import time
 import logging
 from collections import deque
-from ArmyAnalyzer import *
+from ..ArmyAnalyzer import *
 from copy import deepcopy
-from base.client.generals import _spawn
+from .client.generals import _spawn
 
 
 # Color Definitions

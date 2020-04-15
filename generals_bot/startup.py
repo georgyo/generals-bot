@@ -6,7 +6,7 @@
 """
 import os
 import argparse
-from base import bot_base
+from .base import bot_base
 
 
 def startup(moveMethod, botName="PurdueBot"):

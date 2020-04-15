@@ -8,7 +8,7 @@
 import logging
 import time
 import json
-from SearchUtils import *
+from .SearchUtils import *
 import math
 
 math = math.inf

@@ -12,11 +12,11 @@ import json
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
-from DataModels import PathNode, TreeNode, Move
-from Path import Path, PathMove
+from .DataModels import PathNode, TreeNode, Move
+from .Path import Path, PathMove
 
 # from test.test_float import INF
-from ViewInfo import ViewInfo, PathColorer
+from .ViewInfo import ViewInfo, PathColorer
 
 import math
 

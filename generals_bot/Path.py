@@ -10,7 +10,7 @@ from copy import deepcopy
 import time
 import json
 import math
-from DataModels import TreeNode
+from .DataModels import TreeNode
 from collections import deque
 from queue import PriorityQueue
 from pprint import pprint, pformat
