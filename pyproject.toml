@@ -2,7 +2,11 @@
 name = "generals-bot"
 version = "0.1.0"
 description = ""
-authors = ["George Shammas <george@shamm.as>"]
+authors = [
+  "Harris Christiansen <harris@harrischristiansen.com>",
+  "Travis Drake <tdraketdraketdrake@yahoo.com>",
+  "George Shammas <george@shamm.as>",
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
